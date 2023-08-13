@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "airflowctl"
+version = "0.1.0"
+description = "A lightweight Python package to simplify the installation of Apache Airflow effortlessly."
+authors = [
+    "Kaxil Naik <kaxilnaik@gmail.com>",
+]
+readme = "README.md"
+keywords = ["airflow", "installer", "cli", "apache-airflow"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: Apache Airflow",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+license = "Apache License, Version 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+typer = {extras = ["all"], version = "^0.9.0"}
+httpx = "^0.24.1"
+rich-argparse = "^1.2.0"
+rich = "^13.5.2"
+pyyaml = "^6.0.1"
+python-dotenv = ">=0.21.0"
+
+[tool.poetry.scripts]
+airflowctl = "airflowctl.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 110
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+
+[tool.ruff]
+line-length = 110
+# Enable Pyflakes `E` and `F` codes by default.
+extend-select = [
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "C90",  # Complexity
+    "C4",    # flake8-comprehensions
+    "ISC",  # flake8-implicit-str-concat
+    "T10",  # flake8-debugger
+    "A",    # flake8-builtins
+    "UP",   # pyupgrade
+]
+
+# Remove this in future
+extend-ignore = ["A002", "C901", "E402", "E501", "ISC001", "ISC003", "UP030"]
+
+target-version = "py310"
+fix = true
+
+
+[tool.ruff.mccabe]
+max-complexity = 6
+
+[tool.ruff.isort]
+combine-as-imports = true
