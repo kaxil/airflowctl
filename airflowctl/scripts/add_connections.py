@@ -95,7 +95,7 @@ if not settings_file_path.exists():
 with open(settings_file_path) as f:
     settings = yaml.safe_load(f)
 
-connections = settings.get("connections", {})
+connections = settings.get("connections", []) or []
 connections_list = {}
 for conn in connections:
     connection = _create_connection(conn["conn_id"], conn)

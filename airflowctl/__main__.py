@@ -99,12 +99,24 @@ __pycache__/
         file_contents = f"""
 # Airflow version to be installed
 airflow_version: {airflow_version}
+
 # Python version for the project
 python_version: "{python_version}"
 
-# Airflow conn
-connections: {{}}
-# Airflow vars
+# Airflow connections
+connections:
+    # Example connection
+    # - conn_id: example
+    #   conn_type: http
+    #   host: http://example.com
+    #   port: 80
+    #   login: user
+    #   password: pass
+    #   schema: http
+    #   extra: null
+    #      example_extra_field: example-value
+
+# Airflow variables
 variables: {{}}
         """
         settings_file.write_text(file_contents.strip())
