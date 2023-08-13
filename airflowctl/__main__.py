@@ -19,7 +19,29 @@ HIDDEN_CONFIG_FILENAME = ".airflowctl/config.yaml"
 SETTINGS_FILENAME = "settings.yaml"
 
 
+def copy_example_dags(project_path: str | Path):
+    from_dir = Path(__file__).parent / "dags"
+    to_dir = Path(project_path) / "dags"
+    if to_dir.exists():
+        # Skip if dags directory already exists
+        return
+
+    # Create the dags directory
+    to_dir.mkdir(exist_ok=True)
+
+    # Copy *.py files from example dags directory
+    for file in from_dir.iterdir():
+        if file.suffix == ".py":
+            shutil.copy(file, to_dir)
+
+
 def create_project(project_name: str, airflow_version: str, python_version: str):
+    available_airflow_vers = get_airflow_versions()
+    if airflow_version not in available_airflow_vers:
+        print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
+        print(f"Please select a valid version from the list below: {available_airflow_vers}")
+        raise typer.Exit(code=1)
+
     # Create the project directory
     project_dir = Path(project_name).absolute()
     project_dir.mkdir(exist_ok=True)
@@ -32,17 +54,7 @@ def create_project(project_name: str, airflow_version: str, python_version: str)
         )
 
     # Create the dags directory
-    dags_dir = Path(project_dir / "dags")
-    dags_dir.mkdir(exist_ok=True)
-
-    # Copy the example dags from dags directory
-    from_dir = Path(__file__).parent / "dags"
-    for file in from_dir.iterdir():
-        # Ignore if file exists
-        if (dags_dir / file.name).exists():
-            continue
-        to_file = Path(dags_dir / file.name)
-        to_file.write_text(file.read_text())
+    copy_example_dags(project_dir)
 
     # Create the plugins directory
     plugins_dir = Path(project_dir / "plugins")
@@ -102,6 +114,16 @@ AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
         env_file.write_text(file_contents.strip())
     typer.echo(f"Airflow project initialized in {project_dir}")
     return project_dir, settings_file
+
+
+def get_airflow_versions(verbose: bool = False) -> list[str]:
+    with httpx.Client() as client:
+        response = client.get("https://pypi.org/pypi/apache-airflow/json")
+        data = response.json()
+        versions = list(data["releases"].keys())
+        if verbose:
+            print(f"Apache Airflow versions detected: [bold cyan]{versions}[/bold cyan]")
+        return versions
 
 
 def get_latest_airflow_version(verbose: bool = False) -> str:
