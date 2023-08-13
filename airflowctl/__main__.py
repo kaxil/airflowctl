@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,7 @@ import typer
 import yaml
 from dotenv import load_dotenv
 from rich import print
+from rich.console import Console
 
 app = typer.Typer()
 
@@ -511,7 +513,22 @@ def stop(
 
 @app.command()
 def logs(
-    project_path: str = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory.")
+    project_path: str = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    webserver: bool = typer.Option(
+        False,
+        "-w",
+        help="Filter logs for the Webserver",
+    ),
+    scheduler: bool = typer.Option(
+        False,
+        "-s",
+        help="Filter logs for the Scheduler",
+    ),
+    triggerer: bool = typer.Option(
+        False,
+        "-t",
+        help="Filter logs for the Triggerer",
+    ),
 ):
     """Continuously display live logs of the background Airflow processes."""
     logs_info_file = Path(project_path) / "background_logs_info.txt"
@@ -523,11 +540,38 @@ def logs(
     temp_file_name = logs_info_file.read_text().strip()
 
     try:
+        console = Console()
+
         with open(temp_file_name) as temp_file:
-            print("Displaying live background logs... (Press Ctrl+C to stop)")
+            console.print("Displaying live background logs... (Press Ctrl+C to stop)", style="bold")
+
             try:
                 # Use the `tail` command to continuously display logs from the temp file
-                subprocess.run(["tail", "-f", temp_file.name])
+                tail_process = subprocess.Popen(["tail", "-f", temp_file.name], stdout=subprocess.PIPE)
+
+                while True:
+                    line = tail_process.stdout.readline().decode("utf-8")
+                    if not line:
+                        break
+
+                    # Check for component-specific logs
+                    is_webserver_log = webserver and "webserver" in line.lower()
+                    is_scheduler_log = scheduler and "scheduler" in line.lower()
+                    is_triggerer_log = triggerer and "triggerer" in line.lower()
+
+                    # Remove ANSI color codes using regular expressions
+                    line = re.sub(r"\x1B\[[0-9;]*[mK]", "", line)
+
+                    if is_webserver_log or is_scheduler_log or is_triggerer_log:
+                        # Display logs in different colors based on the component
+                        if is_webserver_log:
+                            console.print(line, style="bold cyan")
+                        elif is_scheduler_log:
+                            console.print(line, style="bold magenta")
+                        elif is_triggerer_log:
+                            console.print(line, style="bold yellow")
+                    elif not (webserver or scheduler or triggerer):
+                        console.print(line)
             except KeyboardInterrupt:
                 print("\nLogs display stopped.")
     except Exception as e:
