@@ -113,11 +113,15 @@ connections:
     #   login: user
     #   password: pass
     #   schema: http
-    #   extra: null
+    #   extra:
     #      example_extra_field: example-value
 
 # Airflow variables
-variables: {{}}
+variables:
+    # Example variable
+    # - key: example
+    #   value: example-value
+    #   description: example-description
         """
         settings_file.write_text(file_contents.strip())
 
@@ -373,6 +377,31 @@ def add_connections(project_path: Path, activate_cmd: str):
     subprocess.run(f"{activate_cmd} && {cmd_to_add_connections}", shell=True, check=True, env=os.environ)
 
 
+def add_variables(project_path: Path, activate_cmd: str):
+    # Check settings file exists
+    settings_yaml = Path(f"{project_path}/settings.yaml")
+    if not settings_yaml.exists():
+        typer.echo(f"Settings file {settings_yaml} not found.")
+        raise typer.Exit(1)
+
+    with open(settings_yaml) as f:
+        settings = yaml.safe_load(f)
+
+    variables = settings.get("variables", []) or []
+    if not variables:
+        return
+
+    # Check add_variables script exists
+    var_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_variables.py"
+    if not Path(var_script_path).exists():
+        typer.echo(f"Script {var_script_path} not found.")
+        raise typer.Exit(1)
+
+    print("Adding variables...")
+    cmd_to_add_variables = f"python {var_script_path} {settings_yaml}"
+    subprocess.run(f"{activate_cmd} && {cmd_to_add_variables}", shell=True, check=True, env=os.environ)
+
+
 @app.command()
 def start(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
@@ -417,6 +446,9 @@ def start(
 
         # Add connections
         add_connections(project_path, activate_cmd)
+
+        # Add variables
+        add_variables(project_path, activate_cmd)
 
         # Activate the virtual environment and then run the airflow command
         if not background:
