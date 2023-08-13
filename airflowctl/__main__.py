@@ -1,45 +1,89 @@
-import hashlib
 import os
 import subprocess
+import sys
 import venv
+from pathlib import Path
 
 import httpx
 import typer
 import yaml
 from dotenv import load_dotenv
-from rich.console import Console
-from rich.table import Table
+from rich import print
 
 app = typer.Typer()
 
-CONFIG_FILENAME = "config.yaml"
-PROJECTS_DB_FILE = os.path.expanduser("~/.airflowctl_projects.yaml")
+CONFIG_FILENAME = ".airflowctl/config.yaml"
 
 
-def create_project(project_name: str):
-    config_path = os.path.abspath(project_name)
-    # Create the project directory structure
-    os.makedirs(config_path, exist_ok=True)
-    dags_dir = os.path.join(config_path, "dags")
-    os.makedirs(dags_dir, exist_ok=True)
+def create_project(project_name: str, airflow_version: str, python_version: str):
+    # Create the project directory
+    project_dir = Path(project_name).absolute()
+    project_dir.mkdir(exist_ok=True)
 
-    airflow_version = get_latest_airflow_version()
-    python_version = "3.10"
-    # Initialize the config file
-    config_file = os.path.join(config_path, CONFIG_FILENAME)
-    if not os.path.exists(config_file):
-        default_config = {
-            "python_version": python_version,
-            "airflow_version": airflow_version,
-            "constraints_url": "",
-            "environment_variables": {},
-            "variables": {},
-            "connections": {},
-        }
-        with open(config_file, "w") as f:
-            yaml.dump(default_config, f)
+    # if directory is not empty, prompt user to confirm
+    if any(project_dir.iterdir()):
+        typer.confirm(
+            f"Directory {project_dir} is not empty. Continue?",
+            abort=True,
+        )
 
-    typer.echo(f"Airflow project initialized in {config_path}")
+    # Create the dags directory
+    dags_dir = Path(project_dir / "dags")
+    dags_dir.mkdir(exist_ok=True)
+
+    # Copy the example dags from dags directory
+    from_dir = Path(__file__).parent / "dags"
+    for file in from_dir.iterdir():
+        # Ignore if file exists
+        if (dags_dir / file.name).exists():
+            continue
+        to_file = Path(dags_dir / file.name)
+        to_file.write_text(file.read_text())
+
+    # Create the plugins directory
+    plugins_dir = Path(project_dir / "plugins")
+    plugins_dir.mkdir(exist_ok=True)
+
+    # Create requirements.txt
+    requirements_file = Path(project_dir / "requirements.txt")
+    requirements_file.touch(exist_ok=True)
+
+    # Create .gitignore
+    gitignore_file = Path(project_dir / ".gitignore")
+    gitignore_file.touch(exist_ok=True)
+    with open(gitignore_file, "w") as f:
+        f.write(
+            """
+.git
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+logs
+.DS_Store
+__pycache__/
+.env
+.venv
+.airflowctl
+""".strip()
+        )
+
+    # Initialize the settings file
+    settings_file = Path(project_dir / "settings.yaml")
+    if not settings_file.exists():
+        file_contents = f"""
+# Airflow version to be installed
+airflow_version: {airflow_version}
+# Python version for the project
+python_version: "{python_version}"
+
+# Airflow conn
+connections: {{}}
+# Airflow vars
+variables: {{}}
+        """
+        settings_file.write_text(file_contents.strip())
+
+    typer.echo(f"Airflow project initialized in {project_dir}")
 
 
 def get_latest_airflow_version(verbose: bool = False) -> str:
@@ -60,12 +104,20 @@ def get_latest_airflow_version(verbose: bool = False) -> str:
 
 @app.command()
 def init(
-    project_name: str = typer.Argument(default=".", help="Name of the Airflow project to be initialized.")
+    project_name: str = typer.Argument(default=".", help="Name of the Airflow project to be initialized."),
+    airflow_version: str = typer.Option(
+        default=get_latest_airflow_version(verbose=True),
+        help="Version of Apache Airflow to be used in the project. Defaults to latest.",
+    ),
+    python_version: str = typer.Option(
+        default=f"{sys.version_info.major}.{sys.version_info.minor}",
+        help="Version of Python to be used in the project.",
+    ),
 ):
     """
     Initialize a new Airflow project.
     """
-    create_project(project_name)
+    create_project(project_name, airflow_version, python_version)
 
 
 def create_virtual_env(venv_path: str, python_version: str):
@@ -85,34 +137,6 @@ def create_env_file(project_path: str):
     env_file_path = os.path.join(project_path, ".env")
     with open(env_file_path, "w") as env_file:
         env_file.write(f"AIRFLOW_HOME={project_path}\n")
-
-
-def get_project_hash(config: dict):
-    config_hash = hashlib.sha256(str(config).encode("utf-8")).hexdigest()
-    return config_hash
-
-
-def store_project_info(project_name: str, project_path: str):
-    projects = load_projects()
-    config_file = os.path.join(project_path, CONFIG_FILENAME)
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
-    config_hash = get_project_hash(config)
-    projects = [
-        {
-            "name": project_name,
-            "path": project_path,
-            "config_hash": config_hash,
-            "config_file": CONFIG_FILENAME,
-            "airflow_version": config.get("airflow_version"),
-            "python_version": config.get("python_version"),
-            "venv_path": config.get(
-                "venv_path", f".venv/airflow_{config.get('airflow_version')}_py{config.get('python_version')}"
-            ),
-        }
-    ]
-    with open(PROJECTS_DB_FILE, "w") as f:
-        yaml.dump(projects, f)
 
 
 @app.command()
@@ -145,42 +169,7 @@ def build(
     # Create .env file with AIRFLOW_HOME set to project directory
     create_env_file(project_path)
 
-    store_project_info(os.path.basename(project_path), project_path)
-
     typer.echo("Airflow project built successfully.")
-
-
-def load_projects():
-    if os.path.exists(PROJECTS_DB_FILE):
-        with open(PROJECTS_DB_FILE) as f:
-            projects = yaml.safe_load(f)
-            return projects
-    return {}
-
-
-@app.command("list")
-def list_cmd():
-    projects = load_projects()
-
-    if not projects:
-        typer.echo("No projects found.")
-        return
-
-    console = Console()
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Project Name")
-    table.add_column("Airflow Version")
-    table.add_column("Python Version")
-    table.add_column("Project Path")
-
-    for project in projects:
-        name = project.get("name")
-        airflow_version = project.get("airflow_version")
-        python_version = project.get("python_version")
-        path = project.get("path")
-        table.add_row(name, airflow_version, python_version, path)
-
-    console.print(table)
 
 
 def source_env_file(env_file: str):
