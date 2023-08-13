@@ -348,6 +348,31 @@ def terminate_process_tree(pid):
         pass
 
 
+def add_connections(project_path: Path, activate_cmd: str):
+    # Check settings file exists
+    settings_yaml = Path(f"{project_path}/settings.yaml")
+    if not settings_yaml.exists():
+        typer.echo(f"Settings file {settings_yaml} not found.")
+        raise typer.Exit(1)
+
+    with open(settings_yaml) as f:
+        settings = yaml.safe_load(f)
+
+    connections = settings.get("connections", []) or []
+    if not connections:
+        return
+
+    # Check add_connections script exists
+    conn_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_connections.py"
+    if not Path(conn_script_path).exists():
+        typer.echo(f"Script {conn_script_path} not found.")
+        raise typer.Exit(1)
+
+    print("Adding connections...")
+    cmd_to_add_connections = f"python {conn_script_path} {settings_yaml}"
+    subprocess.run(f"{activate_cmd} && {cmd_to_add_connections}", shell=True, check=True, env=os.environ)
+
+
 @app.command()
 def start(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
@@ -390,21 +415,8 @@ def start(
         print("Verifying Airflow installation...")
         subprocess.run(f"{activate_cmd} && airflow version", shell=True, check=True, env=os.environ)
 
-        # Check add_connections script exists
-        print("Adding connections...")
-        conn_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_connections.py"
-        if not Path(conn_script_path).exists():
-            typer.echo(f"Script {conn_script_path} not found.")
-            raise typer.Exit(1)
-
-        # Check settings file exists
-        settings_yaml = f"{project_path}/settings.yaml"
-        if not Path(settings_yaml).exists():
-            typer.echo(f"Settings file {settings_yaml} not found.")
-            raise typer.Exit(1)
-
-        cmd_to_add_connections = f"python {conn_script_path} {settings_yaml}"
-        subprocess.run(f"{activate_cmd} && {cmd_to_add_connections}", shell=True, check=True, env=os.environ)
+        # Add connections
+        add_connections(project_path, activate_cmd)
 
         # Activate the virtual environment and then run the airflow command
         if not background:
