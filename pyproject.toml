@@ -33,7 +33,7 @@ pyyaml = "^6.0.1"
 python-dotenv = ">=0.21.0"
 
 [tool.poetry.scripts]
-airflowctl = "airflowctl.cli:app"
+airflowctl = "airflowctl.__main__:app"
 
 [build-system]
 requires = ["poetry-core"]
