@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+import shutil
 import subprocess
 import sys
 import venv
@@ -12,7 +15,8 @@ from rich import print
 
 app = typer.Typer()
 
-CONFIG_FILENAME = ".airflowctl/config.yaml"
+HIDDEN_CONFIG_FILENAME = ".airflowctl/config.yaml"
+SETTINGS_FILENAME = "settings.yaml"
 
 
 def create_project(project_name: str, airflow_version: str, python_version: str):
@@ -68,7 +72,7 @@ __pycache__/
         )
 
     # Initialize the settings file
-    settings_file = Path(project_dir / "settings.yaml")
+    settings_file = Path(project_dir / SETTINGS_FILENAME)
     if not settings_file.exists():
         file_contents = f"""
 # Airflow version to be installed
@@ -83,6 +87,15 @@ variables: {{}}
         """
         settings_file.write_text(file_contents.strip())
 
+    # Initialize the .env file
+    env_file = Path(project_dir / ".env")
+    if not env_file.exists():
+        file_contents = f"""
+AIRFLOW_HOME={project_dir}
+AIRFLOW__CORE__LOAD_EXAMPLES=False
+AIRFLOW__CORE__EXECUTOR=LocalExecutor
+"""
+        env_file.write_text(file_contents.strip())
     typer.echo(f"Airflow project initialized in {project_dir}")
 
 
@@ -104,7 +117,10 @@ def get_latest_airflow_version(verbose: bool = False) -> str:
 
 @app.command()
 def init(
-    project_name: str = typer.Argument(default=".", help="Name of the Airflow project to be initialized."),
+    project_name: str = typer.Argument(
+        ...,
+        help="Name of the Airflow project to be initialized.",
+    ),
     airflow_version: str = typer.Option(
         default=get_latest_airflow_version(verbose=True),
         help="Version of Apache Airflow to be used in the project. Defaults to latest.",
@@ -120,54 +136,120 @@ def init(
     create_project(project_name, airflow_version, python_version)
 
 
-def create_virtual_env(venv_path: str, python_version: str):
-    venv.create(venv_path, with_pip=True, prompt="airflowctl")
+def verify_or_create_venv(venv_path: str | Path, recreate: bool):
+    venv_path = os.path.abspath(venv_path)
+
+    if recreate and os.path.exists(venv_path):
+        print(f"Recreating virtual environment at [bold blue]{venv_path}[/bold blue]")
+        shutil.rmtree(venv_path)
+
     venv_bin_python = os.path.join(venv_path, "bin", "python")
-    subprocess.run([venv_bin_python, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"])
+    if os.path.exists(venv_path) and not os.path.exists(venv_bin_python):
+        print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
+        raise SystemExit()
+
+    if not os.path.exists(venv_path):
+        venv.create(venv_path, with_pip=True)
+        print(f"Virtual environment created at [bold blue]{venv_path}[/bold blue]")
+
+    return venv_path
 
 
-def install_airflow(venv_path: str, constraints_url: str):
+def is_airflow_installed(venv_path: str) -> bool:
     venv_bin_python = os.path.join(venv_path, "bin", "python")
-    subprocess.run(
-        [venv_bin_python, "-m", "pip", "install", "apache-airflow", "--constraint", constraints_url]
-    )
+    if not os.path.exists(venv_bin_python):
+        return False
+
+    try:
+        subprocess.run([venv_bin_python, "-m", "airflow", "version"], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 
-def create_env_file(project_path: str):
-    env_file_path = os.path.join(project_path, ".env")
-    with open(env_file_path, "w") as env_file:
-        env_file.write(f"AIRFLOW_HOME={project_path}\n")
+def install_airflow(
+    version: str,
+    venv_path: str,
+    constraints_url: str,
+    extras: str = "",
+    requirements: str = "",
+    verbose: bool = False,
+):
+    if is_airflow_installed(venv_path):
+        print(
+            f"[bold yellow]Apache Airflow {version} is already installed. Skipping installation.[/bold yellow]"
+        )
+        return
+
+    venv_bin_python = os.path.join(venv_path, "bin", "python")
+    if not os.path.exists(venv_bin_python):
+        print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
+        raise SystemExit()
+
+    upgrade_pipeline_command = f"{venv_bin_python} -m pip install --upgrade pip setuptools wheel"
+
+    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install 'apache-airflow=={version}{extras}' --constraint {constraints_url}"
+
+    if requirements:
+        install_command += f" -r {requirements}"
+
+    try:
+        if verbose:
+            print(f"Running command: [bold]{install_command}[/bold]")
+        subprocess.run(install_command, shell=True, check=True)
+        print(f"[bold green]Apache Airflow {version} installed successfully![/bold green]")
+        print(f"Virtual environment at {venv_path}")
+    except subprocess.CalledProcessError:
+        print("[bold red]Error occurred during installation.[/bold red]")
+        raise SystemExit()
+
+
+def _get_conf_or_raise(key: str, settings: dict) -> str:
+    if key not in settings:
+        typer.echo(f"Key '{key}' not found in settings file.")
+        raise typer.Exit(1)
+    return settings[key]
 
 
 @app.command()
 def build(
-    project_path: str = typer.Argument(..., help="Absolute path to the Airflow project directory."),
+    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    settings_file: Path = typer.Option(
+        Path.cwd() / SETTINGS_FILENAME,
+        help="Path to the settings file.",
+    ),
+    venv_path: Path = typer.Option(
+        Path.cwd() / ".venv",
+        help="Path to the virtual environment.",
+    ),
+    recreate_venv: bool = typer.Option(
+        False,
+        help="Recreate virtual environment if it already exists.",
+    ),
 ):
-    project_path = os.path.abspath(project_path)
-    config_file = os.path.join(project_path, "config.yaml")
+    project_path = Path(project_path).absolute()
+    settings_file = Path(settings_file).absolute()
 
-    if not os.path.exists(config_file):
-        typer.echo(f"Config file '{config_file}' not found.")
+    if not Path(project_path / SETTINGS_FILENAME).exists():
+        typer.echo(f"Settings file '{settings_file}' not found.")
         raise typer.Exit(1)
 
-    with open(config_file) as f:
+    with open(settings_file) as f:
         config = yaml.safe_load(f)
 
-    airflow_version = config.get("airflow_version")
-    python_version = config.get("python_version")
+    airflow_version = _get_conf_or_raise("airflow_version", config)
+    python_version = _get_conf_or_raise("python_version", config)
     constraints_url = f"https://raw.githubusercontent.com/apache/airflow/constraints-{airflow_version}/constraints-{python_version}.txt"
 
-    venv_path = os.path.join(
-        project_path, config.get("venv_path", f".venv/airflow_{airflow_version}_py{python_version}")
-    )
     # Create virtual environment
-    create_virtual_env(venv_path, python_version)
+    venv_path = verify_or_create_venv(venv_path, recreate_venv)
 
     # Install Airflow and dependencies
-    install_airflow(venv_path, constraints_url)
-
-    # Create .env file with AIRFLOW_HOME set to project directory
-    create_env_file(project_path)
+    install_airflow(
+        version=airflow_version,
+        venv_path=venv_path,
+        constraints_url=constraints_url,
+    )
 
     typer.echo("Airflow project built successfully.")
 
