@@ -63,6 +63,7 @@ airflow.cfg
 airflow.db
 airflow-webserver.pid
 logs
+standalone_admin_password.txt
 .DS_Store
 __pycache__/
 .env
@@ -100,6 +101,7 @@ AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
 """
         env_file.write_text(file_contents.strip())
     typer.echo(f"Airflow project initialized in {project_dir}")
+    return project_dir, settings_file
 
 
 def get_latest_airflow_version(verbose: bool = False) -> str:
@@ -132,11 +134,19 @@ def init(
         default=f"{sys.version_info.major}.{sys.version_info.minor}",
         help="Version of Python to be used in the project.",
     ),
+    build_start: bool = typer.Option(
+        default=False,
+        help="Build the project and start after initialization.",
+    ),
 ):
     """
     Initialize a new Airflow project.
     """
-    create_project(project_name, airflow_version, python_version)
+    project_dir, settings_file = create_project(project_name, airflow_version, python_version)
+    if build_start:
+        venv_path = Path(project_dir / ".venv")
+        build(project_path=project_dir, settings_file=settings_file, venv_path=venv_path)
+        start(project_path=project_dir, venv_path=venv_path)
 
 
 def verify_or_create_venv(venv_path: str | Path, recreate: bool):
@@ -256,6 +266,7 @@ def build(
     )
 
     typer.echo("Airflow project built successfully.")
+    return venv_path
 
 
 def source_env_file(env_file: str | Path):
@@ -308,10 +319,7 @@ def start(
 
     # Source the .env file to set environment variables
     source_env_file(env_file)
-    os.environ["AIRFLOW_HOME"] = project_path
-    os.environ["AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"] = "sqlite:///" + os.path.abspath(
-        os.path.join(project_path, "airflow.db")
-    )
+    os.environ["AIRFLOW_HOME"] = str(project_path)
 
     venv_path = Path(venv_path).absolute()
     activate_cmd = activate_virtualenv_cmd(venv_path)
