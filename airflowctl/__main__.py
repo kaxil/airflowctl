@@ -8,6 +8,7 @@ import venv
 from pathlib import Path
 
 import httpx
+import psutil
 import typer
 import yaml
 from dotenv import load_dotenv
@@ -35,6 +36,10 @@ def copy_example_dags(project_path: Path):
 
 
 def create_project(project_name: str, airflow_version: str, python_version: str) -> tuple[Path, Path]:
+    # Create a config directory for storing internal state and settings
+    config_dir = Path.home() / ".airflowctl"
+    config_dir.mkdir(exist_ok=True)
+
     available_airflow_vers = get_airflow_versions()
     if airflow_version not in available_airflow_vers:
         print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
@@ -51,6 +56,10 @@ def create_project(project_name: str, airflow_version: str, python_version: str)
             f"Directory {project_dir} is not empty. Continue?",
             abort=True,
         )
+
+    # Create a config directory for storing internal state and settings for the project
+    project_config_dir = project_dir / ".airflowctl"
+    project_config_dir.mkdir(exist_ok=True)
 
     # Create the dags directory
     copy_example_dags(project_dir)
@@ -159,6 +168,10 @@ def init(
         default=False,
         help="Build the project and start after initialization.",
     ),
+    background: bool = typer.Option(
+        default=False,
+        help="Run Airflow in the background.",
+    ),
 ):
     """
     Initialize a new Airflow project.
@@ -166,8 +179,8 @@ def init(
     project_dir, settings_file = create_project(project_name, airflow_version, python_version)
     if build_start:
         venv_path = Path(project_dir / ".venv")
-        build(project_path=project_dir, settings_file=settings_file, venv_path=venv_path)
-        start(project_path=project_dir, venv_path=venv_path)
+        build(project_path=project_dir, settings_file=settings_file, venv_path=venv_path, recreate_venv=False)
+        start(project_path=project_dir, venv_path=venv_path, background=background)
 
 
 def verify_or_create_venv(venv_path: str | Path, recreate: bool):
@@ -312,12 +325,26 @@ def activate_virtualenv_cmd(venv_path: str | Path) -> str:
     return activate_cmd
 
 
+def terminate_process_tree(pid):
+    try:
+        process = psutil.Process(pid)
+        for child in process.children(recursive=True):
+            child.terminate()
+        process.terminate()
+    except psutil.NoSuchProcess:
+        pass
+
+
 @app.command()
 def start(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
     venv_path: Path = typer.Option(
         Path.cwd() / ".venv",
         help="Path to the virtual environment.",
+    ),
+    background: bool = typer.Option(
+        False,
+        help="Run Airflow in the background.",
     ),
 ):
     """Start Airflow."""
@@ -347,9 +374,49 @@ def start(
 
     try:
         # Activate the virtual environment and then run the airflow command
-        subprocess.run(f"{activate_cmd} && airflow standalone", shell=True, check=True, env=os.environ)
+        if not background:
+            subprocess.run(f"{activate_cmd} && airflow standalone", shell=True, check=True, env=os.environ)
+            return
+
+        process = subprocess.Popen(f"{activate_cmd} && airflow standalone", shell=True, env=os.environ)
+        process_id = process.pid
+        print(f"Airflow is starting in the background (PID: {process_id}).")
+
+        # Persist the process ID to a file
+        with open(f"{project_path}/.airflowctl/.background_process_ids", "w") as f:
+            f.write(str(process_id))
+
     except subprocess.CalledProcessError as e:
         typer.echo(f"Error starting Airflow: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def stop(
+    project_path: Path = typer.Argument(default=Path.cwd(), help="Path to the Airflow project directory."),
+):
+    """Stop a running background Airflow process and its entire process tree."""
+    process_id_file = Path(project_path) / ".airflowctl" / ".background_process_ids"
+
+    if not process_id_file.exists():
+        typer.echo("No background processes found.")
+        raise typer.Exit(1)
+
+    with open(process_id_file) as f:
+        process_ids = f.readlines()
+
+    process_ids = [int(pid.strip()) for pid in process_ids if pid.strip()]
+
+    if not process_ids:
+        typer.echo("No background processes found.")
+        raise typer.Exit(1)
+
+    try:
+        for pid in process_ids:
+            terminate_process_tree(pid)
+        print("All background processes and their entire process trees have been stopped.")
+    except Exception as e:
+        typer.echo(f"Error stopping background processes: {e}")
         raise typer.Exit(1)
 
 
