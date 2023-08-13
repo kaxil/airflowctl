@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import venv
 from pathlib import Path
 
@@ -455,9 +456,20 @@ def start(
             subprocess.run(f"{activate_cmd} && airflow standalone", shell=True, check=True, env=os.environ)
             return
 
-        process = subprocess.Popen(f"{activate_cmd} && airflow standalone", shell=True, env=os.environ)
-        process_id = process.pid
-        print(f"Airflow is starting in the background (PID: {process_id}).")
+        # Create a temporary file to capture the logs
+        with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
+            # Save the temporary file name to a known location
+            logs_info_file = Path(project_path) / "background_logs_info.txt"
+            logs_info_file.write_text(temp_file.name)
+
+            # Activate the virtual environment and then run the airflow command in the background
+            process = subprocess.Popen(
+                f"{activate_cmd} && airflow standalone > {temp_file.name} 2>&1 &", shell=True, env=os.environ
+            )
+
+            process_id = process.pid
+            print(f"Airflow is starting in the background (PID: {process_id}).")
+            print("Logs are being captured. You can use 'airflowctl logs' to view the logs.")
 
         # Persist the process ID to a file
         with open(f"{project_path}/.airflowctl/.background_process_ids", "w") as f:
@@ -494,6 +506,32 @@ def stop(
         print("All background processes and their entire process trees have been stopped.")
     except Exception as e:
         typer.echo(f"Error stopping background processes: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def logs(
+    project_path: str = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory.")
+):
+    """Continuously display live logs of the background Airflow processes."""
+    logs_info_file = Path(project_path) / "background_logs_info.txt"
+
+    if not logs_info_file.exists():
+        print("Background logs information file not found.")
+        return
+
+    temp_file_name = logs_info_file.read_text().strip()
+
+    try:
+        with open(temp_file_name) as temp_file:
+            print("Displaying live background logs... (Press Ctrl+C to stop)")
+            try:
+                # Use the `tail` command to continuously display logs from the temp file
+                subprocess.run(["tail", "-f", temp_file.name])
+            except KeyboardInterrupt:
+                print("\nLogs display stopped.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
         raise typer.Exit(1)
 
 
