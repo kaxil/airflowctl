@@ -93,7 +93,10 @@ variables: {{}}
         file_contents = f"""
 AIRFLOW_HOME={project_dir}
 AIRFLOW__CORE__LOAD_EXAMPLES=False
-AIRFLOW__CORE__EXECUTOR=LocalExecutor
+AIRFLOW__CORE__FERNET_KEY=d6Vefz3G9U_ynXB3cr7y_Ak35tAHkEGAVxuz_B-jzWw=
+AIRFLOW__WEBSERVER__WORKERS=2
+AIRFLOW__WEBSERVER__SECRET_KEY=secret
+AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
 """
         env_file.write_text(file_contents.strip())
     typer.echo(f"Airflow project initialized in {project_dir}")
@@ -122,7 +125,7 @@ def init(
         help="Name of the Airflow project to be initialized.",
     ),
     airflow_version: str = typer.Option(
-        default=get_latest_airflow_version(verbose=True),
+        default=get_latest_airflow_version(),
         help="Version of Apache Airflow to be used in the project. Defaults to latest.",
     ),
     python_version: str = typer.Option(
@@ -227,6 +230,7 @@ def build(
         help="Recreate virtual environment if it already exists.",
     ),
 ):
+    """Build an Airflow project."""
     project_path = Path(project_path).absolute()
     settings_file = Path(settings_file).absolute()
 
@@ -254,7 +258,7 @@ def build(
     typer.echo("Airflow project built successfully.")
 
 
-def source_env_file(env_file: str):
+def source_env_file(env_file: str | Path):
     try:
         load_dotenv(env_file)
     except Exception as e:
@@ -262,7 +266,7 @@ def source_env_file(env_file: str):
         raise typer.Exit(1)
 
 
-def activate_virtualenv(venv_path: str):
+def activate_virtualenv_cmd(venv_path: str | Path) -> str:
     if os.name == "posix":
         bin_path = os.path.join(venv_path, "bin", "activate")
         activate_cmd = f"source {bin_path}"
@@ -278,21 +282,29 @@ def activate_virtualenv(venv_path: str):
 
 @app.command()
 def start(
-    project_path: str = typer.Argument(..., help="Absolute path to the Airflow project directory."),
+    project_path: str = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    venv_path: Path = typer.Option(
+        Path.cwd() / ".venv",
+        help="Path to the virtual environment.",
+    ),
 ):
-    config_file = os.path.join(project_path, "config.yaml")
-    env_file = os.path.join(project_path, ".env")
+    """Start Airflow."""
+    env_file = Path(project_path) / ".env"
 
-    if not os.path.exists(config_file):
-        typer.echo(f"Config file '{config_file}' not found.")
-        raise typer.Exit(1)
+    if not Path(venv_path).exists():
+        # If the virtual environment does not exist, show a prompt to build the project
+        # and confirm and run the build command
+        typer.echo("Project has not been built yet.")
+        if not typer.confirm("Do you want to build the project now?"):
+            raise typer.Exit(1)
+        typer.echo("Building project...")
+        build(
+            project_path=project_path, settings_file=Path(project_path) / "settings.yaml", venv_path=venv_path
+        )
 
-    if not os.path.exists(env_file):
+    if not env_file.exists():
         typer.echo(".env file not found.")
         raise typer.Exit(1)
-
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
 
     # Source the .env file to set environment variables
     source_env_file(env_file)
@@ -301,16 +313,8 @@ def start(
         os.path.join(project_path, "airflow.db")
     )
 
-    venv_path = os.path.abspath(
-        config.get(
-            "venv_path",
-            os.path.join(
-                project_path,
-                f".venv/airflow_{config.get('airflow_version')}_py{config.get('python_version')}",
-            ),
-        )
-    )
-    activate_cmd = activate_virtualenv(venv_path)
+    venv_path = Path(venv_path).absolute()
+    activate_cmd = activate_virtualenv_cmd(venv_path)
 
     try:
         # Activate the virtual environment and then run the airflow command
