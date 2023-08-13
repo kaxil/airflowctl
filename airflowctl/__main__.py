@@ -15,13 +15,12 @@ from rich import print
 
 app = typer.Typer()
 
-HIDDEN_CONFIG_FILENAME = ".airflowctl/config.yaml"
 SETTINGS_FILENAME = "settings.yaml"
 
 
-def copy_example_dags(project_path: str | Path):
+def copy_example_dags(project_path: Path):
     from_dir = Path(__file__).parent / "dags"
-    to_dir = Path(project_path) / "dags"
+    to_dir = project_path / "dags"
     if to_dir.exists():
         # Skip if dags directory already exists
         return
@@ -35,7 +34,7 @@ def copy_example_dags(project_path: str | Path):
             shutil.copy(file, to_dir)
 
 
-def create_project(project_name: str, airflow_version: str, python_version: str):
+def create_project(project_name: str, airflow_version: str, python_version: str) -> tuple[Path, Path]:
     available_airflow_vers = get_airflow_versions()
     if airflow_version not in available_airflow_vers:
         print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
@@ -315,7 +314,7 @@ def activate_virtualenv_cmd(venv_path: str | Path) -> str:
 
 @app.command()
 def start(
-    project_path: str = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
     venv_path: Path = typer.Option(
         Path.cwd() / ".venv",
         help="Path to the virtual environment.",
