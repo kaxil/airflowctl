@@ -82,6 +82,7 @@ def create_project(project_name: str, airflow_version: str, python_version: str)
 airflow.cfg
 airflow.db
 airflow-webserver.pid
+webserver_config.py
 logs
 standalone_admin_password.txt
 .DS_Store
@@ -373,6 +374,26 @@ def start(
     activate_cmd = activate_virtualenv_cmd(venv_path)
 
     try:
+        # Verify that Airflow is installed and get the version
+        print("Verifying Airflow installation...")
+        subprocess.run(f"{activate_cmd} && airflow version", shell=True, check=True, env=os.environ)
+
+        # Check add_connections script exists
+        print("Adding connections...")
+        conn_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_connections.py"
+        if not Path(conn_script_path).exists():
+            typer.echo(f"Script {conn_script_path} not found.")
+            raise typer.Exit(1)
+
+        # Check settings file exists
+        settings_yaml = f"{project_path}/settings.yaml"
+        if not Path(settings_yaml).exists():
+            typer.echo(f"Settings file {settings_yaml} not found.")
+            raise typer.Exit(1)
+
+        cmd_to_add_connections = f"python {conn_script_path} {settings_yaml}"
+        subprocess.run(f"{activate_cmd} && {cmd_to_add_connections}", shell=True, check=True, env=os.environ)
+
         # Activate the virtual environment and then run the airflow command
         if not background:
             subprocess.run(f"{activate_cmd} && airflow standalone", shell=True, check=True, env=os.environ)
