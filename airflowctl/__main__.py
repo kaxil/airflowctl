@@ -420,6 +420,14 @@ def build(
         constraints_url=constraints_url,
     )
 
+    # add venv_path to config.yaml
+    project_config_yaml = project_path / ".airflowctl" / "config.yaml"
+    with project_config_yaml.open() as f:
+        project_config = yaml.safe_load(f) or {}
+    project_config["venv_path"] = str(venv_path)
+    with project_config_yaml.open("w") as f:
+        yaml.dump(project_config, f)
+
     typer.echo("Airflow project built successfully.")
     return venv_path
 
@@ -732,6 +740,80 @@ def list_cmd():
 
     console = Console()
     console.print(table)
+
+
+@app.command()
+def info(
+    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+):
+    """Display information about the current Airflow project."""
+
+    airflowctl_project_check(project_path)
+
+    project_path = Path(project_path)
+    settings_file = project_path / SETTINGS_FILENAME
+    project_conf_path = Path(project_path) / ".airflowctl" / "config.yaml"
+
+    project_config = yaml.safe_load(project_conf_path.read_text())
+    project_name = project_config.get("project_name", "N/A")
+    venv_path = Path(project_config.get("venv_path")) or (Path(project_path) / ".venv")
+    venv_path = venv_path.absolute() if venv_path.exists() else "N/A"
+
+    if not settings_file.exists():
+        typer.echo(f"Settings file '{settings_file}' not found.")
+        raise typer.Exit(1)
+
+    with open(settings_file) as f:
+        settings = yaml.safe_load(f)
+
+    python_version = settings.get("python_version", "N/A")
+    airflow_version = settings.get("airflow_version", "N/A")
+
+    console = Console()
+    console.print("Airflow Project Information", style="bold cyan")
+    console.print(f"Project Name: {project_name}")
+    console.print(f"Project Path: {project_path.absolute()}")
+    console.print(f"Python Version: {python_version}")
+    console.print(f"Airflow Version: {airflow_version}")
+    console.print(f"Virtual Environment: {venv_path}")
+    console.print(f"Python: {venv_path}/bin/python")
+    console.print(f"Airflow binary: {venv_path}/bin/airflow")
+
+    print("\n")
+    print_next_steps(venv_path, airflow_version)
+    print()
+
+
+def print_next_steps(venv_path: str | Path, version: str):
+    activated_venv_path = os.environ.get("VIRTUAL_ENV")
+
+    next_steps = "Next Steps:"
+
+    activate_command = f"$ source {venv_path}/bin/activate"
+
+    assert Path(venv_path).exists()
+
+    need_to_activate = not activated_venv_path or activated_venv_path != os.path.dirname(venv_path)
+    if need_to_activate:
+        next_steps += f"""
+    * Activate the virtual environment:
+        [bold blue]{activate_command}[/bold blue]
+    """
+
+    next_steps += f"""
+    * You can now run all the  "airflow" commands in your terminal. For example:
+        [bold blue]$ airflow version[/bold blue]
+
+    * Run Apache Airflow in standalone mode using the following command:
+        [bold blue]$ airflow standalone[/bold blue]
+
+    * Access the Airflow UI in your web browser at: [bold cyan]http://localhost:8080[/bold cyan]
+
+    For more information and guidance, please refer to the Apache Airflow documentation:
+    [bold cyan]https://airflow.apache.org/docs/apache-airflow/{version}/[/bold cyan]
+    """
+
+    print(next_steps)
 
 
 if __name__ == "__main__":

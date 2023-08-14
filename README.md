@@ -29,6 +29,7 @@ your Airflow projects, even for Python versions that are not installed on your s
   - [Step 4: Monitor Logs](#step-4-monitor-logs)
   - [Step 5: Stop Airflow](#step-5-stop-airflow)
   - [Step 6: List Airflow Projects](#step-6-list-airflow-projects)
+  - [Step 7: Show Project Info & Using Airflow commands](#step-7-show-project-info--using-airflow-commands)
 
 
 ## Installation
@@ -196,6 +197,30 @@ Example:
 
 ```shell
 airflowctl list
+```
+
+### Step 7: Show Project Info & Using Airflow commands
+
+To show project info, use the info command.
+
+Example:
+
+```shell
+# From the project directory
+airflowctl info
+
+# From outside the project directory
+airflowctl info my_airflow_project
+```
+
+To run Airflow commands, activate the virtual environment first and then run the commands.
+
+Example:
+
+```shell
+# From the project directory
+source .venv/bin/activate
+airflow version
 ```
 
 For more information and options, you can use the `--help` flag with each command.
