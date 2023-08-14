@@ -36,7 +36,7 @@ your Airflow projects, even for Python versions that are not installed on your s
   - [Step 5: Stop Airflow](#step-5-stop-airflow)
   - [Step 6: List Airflow Projects](#step-6-list-airflow-projects)
   - [Step 7: Show Project Info & Using Airflow commands](#step-7-show-project-info--using-airflow-commands)
-
+  - [Step 8: Changing Airflow configuration](#step-8-changing-airflow-configurations)
 
 ## Installation
 
@@ -236,6 +236,31 @@ To add a new DAG, add the DAG file to the `dags` directory.
 
 To edit an existing DAG, edit the DAG file in the `dags` directory.
 The changes will be reflected in the Airflow web server.
+
+### Step 8: Changing Airflow Configurations
+
+`airflowctl` by default uses SQLite as the backend database and `SequentialExecutor` as the executor.
+However, if you want to use other databases or executors, you can stop the project and
+either a) edit the `airflow.cfg` file or b) add environment variables to the `.env` file.
+
+Example:
+
+```shell
+# Stop the project
+airflowctl stop my_airflow_project
+
+# Changing the executor to LocalExecutor
+# Change the database to PostgreSQL if you already have it installed
+echo "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@localhost:5432/airflow" >> .env
+echo "AIRFLOW__CORE__EXECUTOR=LocalExecutor" >> .env
+
+# Start the project
+
+airflowctl start my_airflow_project
+```
+
+Check the [Airflow documentation](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html)
+for all the available Airflow configurations.
 
 ### Other Commands
 
