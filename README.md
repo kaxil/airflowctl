@@ -7,6 +7,9 @@ It provides a set of commands to initialize, build, start, stop, and manage Airf
 With `airflowctl`, you can easily set up and manage your Airflow projects, install
 specific versions of Apache Airflow, and manage virtual environments.
 
+The main goal of `airflowctl` is for first-time Airflow users to install and setup Airflow using a single command and
+for existing Airflow users to manage multiple Airflow projects with different Airflow versions on the same machine.
+
 ## Features
 
 - **Project Initialization with Connections & Variables:** Initialize a new Airflow project with customizable project name, Apache Airflow
@@ -16,7 +19,6 @@ your Airflow projects, even for Python versions that are not installed on your s
 - **Airflow Version Management:** Install and manage specific versions of Apache Airflow.
 - **Background Process Management:** Start and stop Airflow in the background with process management capabilities.
 - **Live Logs Display:** Continuously display live logs of background Airflow processes with optional log filtering.
-
 
 ## Table of Contents
 
@@ -220,7 +222,15 @@ Example:
 ```shell
 # From the project directory
 source .venv/bin/activate
+
+# Source all the environment variables
+source .env
 airflow version
 ```
+
+To add a new DAG, add the DAG file to the `dags` directory.
+
+To edit an existing DAG, edit the DAG file in the `dags` directory.
+The changes will be reflected in the Airflow web server.
 
 For more information and options, you can use the `--help` flag with each command.

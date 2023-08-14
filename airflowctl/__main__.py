@@ -798,6 +798,9 @@ def print_next_steps(venv_path: str | Path, version: str):
         next_steps += f"""
     * Activate the virtual environment:
         [bold blue]{activate_command}[/bold blue]
+
+    * Source the environment variables:
+        [bold blue]$ source .env[/bold blue]
     """
 
     next_steps += f"""
