@@ -4,13 +4,15 @@
 
 `airflowctl` is a command-line tool for managing Apache Airflow projects.
 It provides a set of commands to initialize, build, start, stop, and manage Airflow projects.
-With airflowctl, you can easily set up and manage your Airflow projects, install
+With `airflowctl`, you can easily set up and manage your Airflow projects, install
 specific versions of Apache Airflow, and manage virtual environments.
 
 ## Features
 
-- **Project Initialization:** Initialize a new Airflow project with customizable project name, Apache Airflow version, and Python version.
-- **Automatic Virtual Environment Management:** Automatically create and manage virtual environments for your Airflow projects.
+- **Project Initialization with Connections & Variables:** Initialize a new Airflow project with customizable project name, Apache Airflow
+version, and Python version. It also allows you to manage Airflow connections and variables.
+- **Automatic Virtual Environment Management:** Automatically create and manage virtual environments for
+your Airflow projects, even for Python versions that are not installed on your system.
 - **Airflow Version Management:** Install and manage specific versions of Apache Airflow.
 - **Background Process Management:** Start and stop Airflow in the background with process management capabilities.
 - **Live Logs Display:** Continuously display live logs of background Airflow processes with optional log filtering.
@@ -127,6 +129,11 @@ Run the build command from the project directory:
 cd my_airflow_project
 airflowctl build
 ```
+
+The CLI relies on [`pyenv`](https://github.com/pyenv/pyenv) to download and install a Python version if the version is not already installed.
+
+Example, if you have Python 3.8 installed but you specify Python 3.7 in the `settings.yaml` file,
+the CLI will install Python 3.7 using `pyenv` and create a virtual environment with Python 3.7 first.
 
 ### Step 3: Start Airflow
 
