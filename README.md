@@ -5,6 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/airflowctl.svg)](https://pypi.python.org/pypi/airflowctl)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/airflowctl)](https://pypi.org/project/airflowctl/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kaxil/airflowctl/main.svg)](https://results.pre-commit.ci/latest/github/kaxil/airflowctl/main)
 
 `airflowctl` is a command-line tool for managing Apache Airflow™ projects.
 It provides a set of commands to initialize, build, start, stop, and manage Airflow projects.
