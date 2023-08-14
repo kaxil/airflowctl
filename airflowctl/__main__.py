@@ -102,7 +102,7 @@ __pycache__/
     if not settings_file.exists():
         file_contents = f"""
 # Airflow version to be installed
-airflow_version: {airflow_version}
+airflow_version: "{airflow_version}"
 
 # Python version for the project
 python_version: "{python_version}"
@@ -319,6 +319,15 @@ def _get_major_minor_version(python_version: str) -> str:
     return f"{major}.{minor}"
 
 
+def airflowctl_project_check(project_path: str | Path):
+    """Check if the current directory is an Airflow project."""
+    # Abort if .airflowctl directory does not exist in the project
+    airflowctl_dir = Path(project_path) / ".airflowctl"
+    if not airflowctl_dir.exists():
+        print("Not an airflowctl project. Run 'airflowctl init' to initialize the project.")
+        raise typer.Exit(1)
+
+
 @app.command()
 def build(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
@@ -335,7 +344,12 @@ def build(
         help="Recreate virtual environment if it already exists.",
     ),
 ):
-    """Build an Airflow project."""
+    """
+    Build an Airflow project. This command sets up the project environment, installs Apache Airflow
+    and its dependencies.
+    """
+
+    airflowctl_project_check(project_path)
     project_path = Path(project_path).absolute()
     settings_file = Path(settings_file).absolute()
 
@@ -460,6 +474,8 @@ def start(
     ),
 ):
     """Start Airflow."""
+    airflowctl_project_check(project_path)
+
     env_file = Path(project_path) / ".env"
 
     if not Path(venv_path).exists():
@@ -529,6 +545,7 @@ def stop(
     project_path: Path = typer.Argument(default=Path.cwd(), help="Path to the Airflow project directory."),
 ):
     """Stop a running background Airflow process and its entire process tree."""
+    airflowctl_project_check(project_path)
     process_id_file = Path(project_path) / ".airflowctl" / ".background_process_ids"
 
     if not process_id_file.exists():
@@ -573,6 +590,9 @@ def logs(
     ),
 ):
     """Continuously display live logs of the background Airflow processes."""
+
+    airflowctl_project_check(project_path)
+
     logs_info_file = Path(project_path) / "background_logs_info.txt"
 
     if not logs_info_file.exists():
