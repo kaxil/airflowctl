@@ -69,7 +69,7 @@ def verify_or_create_venv(venv_path: str | Path, recreate: bool, python_version:
 def activate_virtualenv_cmd(venv_path: str | Path) -> str:
     if os.name == "posix":
         bin_path = os.path.join(venv_path, "bin", "activate")
-        activate_cmd = f"source {bin_path}"
+        activate_cmd = f". {bin_path}"
     elif os.name == "nt":
         bin_path = os.path.join(venv_path, "Scripts", "activate")
         activate_cmd = f"call {bin_path}"
