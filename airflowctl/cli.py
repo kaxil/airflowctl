@@ -74,8 +74,7 @@ def init(
 def build(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
     settings_file: Path = typer.Option(
-        Path.cwd() / SETTINGS_FILENAME,
-        help="Path to the settings file.",
+        None, help="Path to the settings file. Defaults to PROJECT_DIR/settings.yaml.", show_default=False
     ),
     venv_path: Path = typer.Option(
         Path.cwd() / ".venv",
@@ -93,9 +92,12 @@ def build(
 
     airflowctl_project_check(project_path)
     project_path = Path(project_path).absolute()
+
+    if not settings_file:
+        settings_file = project_path / SETTINGS_FILENAME
     settings_file = Path(settings_file).absolute()
 
-    if not Path(project_path / SETTINGS_FILENAME).exists():
+    if not settings_file.exists():
         typer.echo(f"Settings file '{settings_file}' not found.")
         raise typer.Exit(1)
 
@@ -412,7 +414,7 @@ def print_next_steps(venv_path: str | Path, version: str):
 
     next_steps = "Next Steps:"
 
-    activate_command = f"$ source {venv_path}/bin/activate"
+    activate_command = activate_virtualenv_cmd(venv_path)
 
     assert Path(venv_path).exists()
 
