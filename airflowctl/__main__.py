@@ -2,211 +2,35 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import subprocess
-import sys
 import tempfile
-import venv
 from pathlib import Path
 
-import httpx
 import psutil
 import typer
 import yaml
-from dotenv import load_dotenv
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
+from airflowctl.utils.connections import add_connections
+from airflowctl.utils.install_airflow import get_latest_airflow_version, install_airflow
+from airflowctl.utils.project import (
+    GLOBAL_TRACKING_FILE,
+    SETTINGS_FILENAME,
+    airflowctl_project_check,
+    create_project,
+    get_conf_or_raise,
+)
+from airflowctl.utils.variables import add_variables
+from airflowctl.utils.virtualenv import (
+    INSTALLED_PYTHON_VERSION,
+    activate_virtualenv_cmd,
+    source_env_file,
+    verify_or_create_venv,
+)
+
 app = typer.Typer()
-
-SETTINGS_FILENAME = "settings.yaml"
-INSTALLED_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-GLOBAL_CONFIG_DIR = Path.home() / ".airflowctl"
-GLOBAL_TRACKING_FILE = GLOBAL_CONFIG_DIR / "tracked_projects.yaml"
-
-
-def copy_example_dags(project_path: Path):
-    from_dir = Path(__file__).parent / "dags"
-    to_dir = project_path / "dags"
-    if to_dir.exists():
-        # Skip if dags directory already exists
-        return
-
-    # Create the dags directory
-    to_dir.mkdir(exist_ok=True)
-
-    # Copy *.py files from example dags directory
-    for file in from_dir.iterdir():
-        if file.suffix == ".py":
-            shutil.copy(file, to_dir)
-
-
-def create_project(
-    project_name: str, project_path: str | Path, airflow_version: str, python_version: str
-) -> tuple[Path, Path]:
-    # Create a config directory for storing internal state and settings
-    GLOBAL_CONFIG_DIR.mkdir(exist_ok=True)
-    GLOBAL_TRACKING_FILE.touch(exist_ok=True)
-
-    available_airflow_vers = get_airflow_versions()
-    if airflow_version not in available_airflow_vers:
-        print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
-        print(f"Please select a valid version from the list below: {available_airflow_vers}")
-        raise typer.Exit(code=1)
-
-    # Create the project directory
-    project_dir = Path(project_path).absolute()
-    project_dir.mkdir(exist_ok=True)
-
-    # if directory is not empty, prompt user to confirm
-    if any(project_dir.iterdir()):
-        typer.confirm(
-            f"Directory {project_dir} is not empty. Continue?",
-            abort=True,
-        )
-
-    # Track the project in the config file
-    add_project_to_tracking(project_dir)
-
-    # Create a config directory for storing internal state and settings for the project
-    project_config_dir = project_dir / ".airflowctl"
-    project_config_dir.mkdir(exist_ok=True)
-    project_config_yaml = project_config_dir / "config.yaml"
-    project_config_yaml.touch(exist_ok=True)
-
-    if not project_name:
-        project_name = str(project_dir)
-    with project_config_yaml.open("w") as f:
-        yaml.dump({"project_name": project_name}, f)
-
-    # Create the dags directory
-    copy_example_dags(project_dir)
-
-    # Create the plugins directory
-    plugins_dir = Path(project_dir / "plugins")
-    plugins_dir.mkdir(exist_ok=True)
-
-    # Create requirements.txt
-    requirements_file = Path(project_dir / "requirements.txt")
-    requirements_file.touch(exist_ok=True)
-
-    # Create .gitignore
-    gitignore_file = Path(project_dir / ".gitignore")
-    gitignore_file.touch(exist_ok=True)
-    with open(gitignore_file, "w") as f:
-        f.write(
-            """
-.git
-airflow.cfg
-airflow.db
-airflow-webserver.pid
-webserver_config.py
-logs
-standalone_admin_password.txt
-.DS_Store
-__pycache__/
-.env
-.venv
-.airflowctl
-""".strip()
-        )
-
-    # Initialize the settings file
-    settings_file = Path(project_dir / SETTINGS_FILENAME)
-    if not settings_file.exists():
-        file_contents = f"""
-# Airflow version to be installed
-airflow_version: "{airflow_version}"
-
-# Python version for the project
-python_version: "{python_version}"
-
-# Airflow connections
-connections:
-    # Example connection
-    # - conn_id: example
-    #   conn_type: http
-    #   host: http://example.com
-    #   port: 80
-    #   login: user
-    #   password: pass
-    #   schema: http
-    #   extra:
-    #      example_extra_field: example-value
-
-# Airflow variables
-variables:
-    # Example variable
-    # - key: example
-    #   value: example-value
-    #   description: example-description
-        """
-        settings_file.write_text(file_contents.strip())
-
-    # Initialize the .env file
-    env_file = Path(project_dir / ".env")
-    if not env_file.exists():
-        file_contents = f"""
-AIRFLOW_HOME={project_dir}
-AIRFLOW__CORE__LOAD_EXAMPLES=False
-AIRFLOW__CORE__FERNET_KEY=d6Vefz3G9U_ynXB3cr7y_Ak35tAHkEGAVxuz_B-jzWw=
-AIRFLOW__WEBSERVER__WORKERS=2
-AIRFLOW__WEBSERVER__SECRET_KEY=secret
-AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
-"""
-        env_file.write_text(file_contents.strip())
-    typer.echo(f"Airflow project initialized in {project_dir}")
-    return project_dir, settings_file
-
-
-def add_project_to_tracking(project_path: str | Path):
-    """Add an Airflow project to tracking."""
-
-    contents = GLOBAL_TRACKING_FILE.read_text()
-    if not contents:
-        contents = {"projects": []}
-    else:
-        contents = yaml.safe_load(contents)
-
-    tracked_projects = contents.get("projects", [])
-    project_path = str(Path(project_path).absolute())
-
-    if project_path in tracked_projects:
-        return
-
-    contents["projects"].append(project_path)
-
-    with open(GLOBAL_TRACKING_FILE, "w") as f:
-        yaml.dump(contents, f)
-
-    print(f"Project {project_path} added to tracking.")
-
-
-def get_airflow_versions(verbose: bool = False) -> list[str]:
-    with httpx.Client() as client:
-        response = client.get("https://pypi.org/pypi/apache-airflow/json")
-        data = response.json()
-        versions = list(data["releases"].keys())
-        if verbose:
-            print(f"Apache Airflow versions detected: [bold cyan]{versions}[/bold cyan]")
-        return versions
-
-
-def get_latest_airflow_version(verbose: bool = False) -> str:
-    try:
-        with httpx.Client() as client:
-            response = client.get("https://pypi.org/pypi/apache-airflow/json")
-            data = response.json()
-            latest_version = data["info"]["version"]
-            if verbose:
-                print(f"Latest Apache Airflow version detected: [bold cyan]{latest_version}[/bold cyan]")
-            return latest_version
-    except (httpx.RequestError, KeyError) as e:
-        if verbose:
-            print(f"[bold red]Error occurred while retrieving latest version: {e}[/bold red]")
-            print("[bold yellow]Defaulting to Apache Airflow version 2.7.0[/bold yellow]")
-        return "2.7.0"
 
 
 @app.command()
@@ -246,130 +70,6 @@ def init(
         start(project_path=project_dir, venv_path=venv_path, background=background)
 
 
-def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
-    # Check if pyenv is available
-    if shutil.which("pyenv"):
-        # Use pyenv to install and set the desired Python version
-        print("pyenv found. Using pyenv to install and set the desired Python version.")
-        subprocess.run(["pyenv", "install", python_version, "--skip-existing"], check=True)
-    else:
-        print("Install pyenv to use a specific Python version.")
-        raise typer.Exit(code=1)
-
-    result = subprocess.run(
-        ["pyenv", "prefix", python_version], stdout=subprocess.PIPE, text=True, check=True
-    )
-    python_ver_path = result.stdout.strip()
-
-    py_venv_bin_python = os.path.join(python_ver_path, "bin", "python")
-
-    # Create the virtual environment using venv
-    subprocess.run([py_venv_bin_python, "-m", "venv", venv_path], check=True)
-
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-
-    # Continue with using the virtual environment
-    subprocess.run([venv_bin_python, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    print(
-        f"Virtual environment created at [bold blue]{venv_path}[/bold blue] with Python version {python_version}"
-    )
-
-
-def verify_or_create_venv(venv_path: str | Path, recreate: bool, python_version: str):
-    venv_path = os.path.abspath(venv_path)
-
-    if recreate and os.path.exists(venv_path):
-        print(f"Recreating virtual environment at [bold blue]{venv_path}[/bold blue]")
-        shutil.rmtree(venv_path)
-
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-    if os.path.exists(venv_path) and not os.path.exists(venv_bin_python):
-        print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
-        raise SystemExit()
-
-    if python_version != INSTALLED_PYTHON_VERSION:
-        print(
-            f"Python version ({python_version}) is different from the default Python version ({sys.version})."
-        )
-        create_virtualenv_with_specific_python_version(venv_path, python_version)
-
-    if not os.path.exists(venv_path):
-        venv.create(venv_path, with_pip=True)
-        print(f"Virtual environment created at [bold blue]{venv_path}[/bold blue]")
-
-    return venv_path
-
-
-def is_airflow_installed(venv_path: str) -> bool:
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-    if not os.path.exists(venv_bin_python):
-        return False
-
-    try:
-        subprocess.run([venv_bin_python, "-m", "airflow", "version"], check=True, capture_output=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
-def install_airflow(
-    version: str,
-    venv_path: str,
-    constraints_url: str,
-    extras: str = "",
-    requirements: str = "",
-    verbose: bool = False,
-):
-    if is_airflow_installed(venv_path):
-        print(
-            f"[bold yellow]Apache Airflow {version} is already installed. Skipping installation.[/bold yellow]"
-        )
-        return
-
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-    if not os.path.exists(venv_bin_python):
-        print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
-        raise SystemExit()
-
-    upgrade_pipeline_command = f"{venv_bin_python} -m pip install --upgrade pip setuptools wheel"
-
-    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install 'apache-airflow=={version}{extras}' --constraint {constraints_url}"
-
-    if requirements:
-        install_command += f" -r {requirements}"
-
-    try:
-        if verbose:
-            print(f"Running command: [bold]{install_command}[/bold]")
-        subprocess.run(install_command, shell=True, check=True)
-        print(f"[bold green]Apache Airflow {version} installed successfully![/bold green]")
-        print(f"Virtual environment at {venv_path}")
-    except subprocess.CalledProcessError:
-        print("[bold red]Error occurred during installation.[/bold red]")
-        raise SystemExit()
-
-
-def _get_conf_or_raise(key: str, settings: dict) -> str:
-    if key not in settings:
-        typer.echo(f"Key '{key}' not found in settings file.")
-        raise typer.Exit(1)
-    return settings[key]
-
-
-def _get_major_minor_version(python_version: str) -> str:
-    major, minor = map(int, python_version.split(".")[:2])
-    return f"{major}.{minor}"
-
-
-def airflowctl_project_check(project_path: str | Path):
-    """Check if the current directory is an Airflow project."""
-    # Abort if .airflowctl directory does not exist in the project
-    airflowctl_dir = Path(project_path) / ".airflowctl"
-    if not airflowctl_dir.exists():
-        print("Not an airflowctl project. Run 'airflowctl init' to initialize the project.")
-        raise typer.Exit(1)
-
-
 @app.command()
 def build(
     project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
@@ -402,13 +102,8 @@ def build(
     with open(settings_file) as f:
         config = yaml.safe_load(f)
 
-    airflow_version = _get_conf_or_raise("airflow_version", config)
-    python_version = _get_conf_or_raise("python_version", config)
-
-    constraints_url = (
-        f"https://raw.githubusercontent.com/apache/airflow/"
-        f"constraints-{airflow_version}/constraints-{_get_major_minor_version(python_version)}.txt"
-    )
+    airflow_version = get_conf_or_raise("airflow_version", config)
+    python_version = get_conf_or_raise("python_version", config)
 
     # Create virtual environment
     venv_path = verify_or_create_venv(venv_path, recreate_venv, python_version)
@@ -417,7 +112,7 @@ def build(
     install_airflow(
         version=airflow_version,
         venv_path=venv_path,
-        constraints_url=constraints_url,
+        python_version=python_version,
     )
 
     # add venv_path to config.yaml
@@ -432,28 +127,6 @@ def build(
     return venv_path
 
 
-def source_env_file(env_file: str | Path):
-    try:
-        load_dotenv(env_file)
-    except Exception as e:
-        typer.echo(f"Error loading .env file: {e}")
-        raise typer.Exit(1)
-
-
-def activate_virtualenv_cmd(venv_path: str | Path) -> str:
-    if os.name == "posix":
-        bin_path = os.path.join(venv_path, "bin", "activate")
-        activate_cmd = f"source {bin_path}"
-    elif os.name == "nt":
-        bin_path = os.path.join(venv_path, "Scripts", "activate")
-        activate_cmd = f"call {bin_path}"
-    else:
-        typer.echo("Unsupported operating system.")
-        raise typer.Exit(1)
-
-    return activate_cmd
-
-
 def terminate_process_tree(pid):
     try:
         process = psutil.Process(pid)
@@ -462,56 +135,6 @@ def terminate_process_tree(pid):
         process.terminate()
     except psutil.NoSuchProcess:
         pass
-
-
-def add_connections(project_path: Path, activate_cmd: str):
-    # Check settings file exists
-    settings_yaml = Path(f"{project_path}/settings.yaml")
-    if not settings_yaml.exists():
-        typer.echo(f"Settings file {settings_yaml} not found.")
-        raise typer.Exit(1)
-
-    with open(settings_yaml) as f:
-        settings = yaml.safe_load(f)
-
-    connections = settings.get("connections", []) or []
-    if not connections:
-        return
-
-    # Check add_connections script exists
-    conn_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_connections.py"
-    if not Path(conn_script_path).exists():
-        typer.echo(f"Script {conn_script_path} not found.")
-        raise typer.Exit(1)
-
-    print("Adding connections...")
-    cmd_to_add_connections = f"python {conn_script_path} {settings_yaml}"
-    subprocess.run(f"{activate_cmd} && {cmd_to_add_connections}", shell=True, check=True, env=os.environ)
-
-
-def add_variables(project_path: Path, activate_cmd: str):
-    # Check settings file exists
-    settings_yaml = Path(f"{project_path}/settings.yaml")
-    if not settings_yaml.exists():
-        typer.echo(f"Settings file {settings_yaml} not found.")
-        raise typer.Exit(1)
-
-    with open(settings_yaml) as f:
-        settings = yaml.safe_load(f)
-
-    variables = settings.get("variables", []) or []
-    if not variables:
-        return
-
-    # Check add_variables script exists
-    var_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_variables.py"
-    if not Path(var_script_path).exists():
-        typer.echo(f"Script {var_script_path} not found.")
-        raise typer.Exit(1)
-
-    print("Adding variables...")
-    cmd_to_add_variables = f"python {var_script_path} {settings_yaml}"
-    subprocess.run(f"{activate_cmd} && {cmd_to_add_variables}", shell=True, check=True, env=os.environ)
 
 
 @app.command()
