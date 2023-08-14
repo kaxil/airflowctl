@@ -233,4 +233,10 @@ To add a new DAG, add the DAG file to the `dags` directory.
 To edit an existing DAG, edit the DAG file in the `dags` directory.
 The changes will be reflected in the Airflow web server.
 
+### Other Commands
+
 For more information and options, you can use the `--help` flag with each command.
+
+## License
+
+This project is licensed under the terms of the [Apache 2.0 License](LICENSE)
