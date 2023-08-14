@@ -1,6 +1,6 @@
 # airflowctl
 
-![PyPI](https://img.shields.io/pypi/v/airflowctl)
+[![PyPI](https://img.shields.io/pypi/v/airflowctl)](https://pypi.org/project/airflowctl/)
 [![License](https://img.shields.io/:license-Apache%202-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.txt)
 [![Python](https://img.shields.io/pypi/pyversions/airflowctl.svg)](https://pypi.python.org/pypi/airflowctl)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/airflowctl)](https://pypi.org/project/airflowctl/)
