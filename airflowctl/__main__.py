@@ -74,6 +74,9 @@ def create_project(
     project_config_dir.mkdir(exist_ok=True)
     project_config_yaml = project_config_dir / "config.yaml"
     project_config_yaml.touch(exist_ok=True)
+
+    if not project_name:
+        project_name = str(project_dir)
     with project_config_yaml.open("w") as f:
         yaml.dump({"project_name": project_name}, f)
 
@@ -213,7 +216,7 @@ def init(
         help="Path to initialize the project in.",
     ),
     project_name: str = typer.Option(
-        default=str(Path.cwd()),
+        default="",
         help="Name of the Airflow project to be initialized.",
     ),
     airflow_version: str = typer.Option(
