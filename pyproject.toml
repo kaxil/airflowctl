@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airflowctl"
-version = "0.1.7"
+version = "0.1.8"
 description = "A lightweight Python package to simplify the installation of Apache Airflow effortlessly."
 authors = [
     "Kaxil Naik <kaxilnaik@gmail.com>",
