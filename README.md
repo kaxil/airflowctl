@@ -1,5 +1,7 @@
 # airflowctl
 
+![PyPI](https://img.shields.io/pypi/v/airflowctl)
+
 `airflowctl` is a command-line tool for managing Apache Airflow projects.
 It provides a set of commands to initialize, build, start, stop, and manage Airflow projects.
 With airflowctl, you can easily set up and manage your Airflow projects, install
