@@ -16,11 +16,14 @@ import yaml
 from dotenv import load_dotenv
 from rich import print
 from rich.console import Console
+from rich.table import Table
 
 app = typer.Typer()
 
 SETTINGS_FILENAME = "settings.yaml"
 INSTALLED_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+GLOBAL_CONFIG_DIR = Path.home() / ".airflowctl"
+GLOBAL_TRACKING_FILE = GLOBAL_CONFIG_DIR / "tracked_projects.yaml"
 
 
 def copy_example_dags(project_path: Path):
@@ -39,10 +42,12 @@ def copy_example_dags(project_path: Path):
             shutil.copy(file, to_dir)
 
 
-def create_project(project_name: str, airflow_version: str, python_version: str) -> tuple[Path, Path]:
+def create_project(
+    project_name: str, project_path: str | Path, airflow_version: str, python_version: str
+) -> tuple[Path, Path]:
     # Create a config directory for storing internal state and settings
-    config_dir = Path.home() / ".airflowctl"
-    config_dir.mkdir(exist_ok=True)
+    GLOBAL_CONFIG_DIR.mkdir(exist_ok=True)
+    GLOBAL_TRACKING_FILE.touch(exist_ok=True)
 
     available_airflow_vers = get_airflow_versions()
     if airflow_version not in available_airflow_vers:
@@ -51,7 +56,7 @@ def create_project(project_name: str, airflow_version: str, python_version: str)
         raise typer.Exit(code=1)
 
     # Create the project directory
-    project_dir = Path(project_name).absolute()
+    project_dir = Path(project_path).absolute()
     project_dir.mkdir(exist_ok=True)
 
     # if directory is not empty, prompt user to confirm
@@ -61,9 +66,16 @@ def create_project(project_name: str, airflow_version: str, python_version: str)
             abort=True,
         )
 
+    # Track the project in the config file
+    add_project_to_tracking(project_dir)
+
     # Create a config directory for storing internal state and settings for the project
     project_config_dir = project_dir / ".airflowctl"
     project_config_dir.mkdir(exist_ok=True)
+    project_config_yaml = project_config_dir / "config.yaml"
+    project_config_yaml.touch(exist_ok=True)
+    with project_config_yaml.open("w") as f:
+        yaml.dump({"project_name": project_name}, f)
 
     # Create the dags directory
     copy_example_dags(project_dir)
@@ -145,6 +157,29 @@ AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
     return project_dir, settings_file
 
 
+def add_project_to_tracking(project_path: str | Path):
+    """Add an Airflow project to tracking."""
+
+    contents = GLOBAL_TRACKING_FILE.read_text()
+    if not contents:
+        contents = {"projects": []}
+    else:
+        contents = yaml.safe_load(contents)
+
+    tracked_projects = contents.get("projects", [])
+    project_path = str(Path(project_path).absolute())
+
+    if project_path in tracked_projects:
+        return
+
+    contents["projects"].append(project_path)
+
+    with open(GLOBAL_TRACKING_FILE, "w") as f:
+        yaml.dump(contents, f)
+
+    print(f"Project {project_path} added to tracking.")
+
+
 def get_airflow_versions(verbose: bool = False) -> list[str]:
     with httpx.Client() as client:
         response = client.get("https://pypi.org/pypi/apache-airflow/json")
@@ -173,8 +208,12 @@ def get_latest_airflow_version(verbose: bool = False) -> str:
 
 @app.command()
 def init(
-    project_name: str = typer.Argument(
+    project_path: Path = typer.Argument(
         ...,
+        help="Path to initialize the project in.",
+    ),
+    project_name: str = typer.Option(
+        default=str(Path.cwd()),
         help="Name of the Airflow project to be initialized.",
     ),
     airflow_version: str = typer.Option(
@@ -197,7 +236,7 @@ def init(
     """
     Initialize a new Airflow project.
     """
-    project_dir, settings_file = create_project(project_name, airflow_version, python_version)
+    project_dir, settings_file = create_project(project_name, project_path, airflow_version, python_version)
     if build_start:
         venv_path = Path(project_dir / ".venv")
         build(project_path=project_dir, settings_file=settings_file, venv_path=venv_path, recreate_venv=False)
@@ -361,9 +400,12 @@ def build(
         config = yaml.safe_load(f)
 
     airflow_version = _get_conf_or_raise("airflow_version", config)
-    python_version = _get_major_minor_version(_get_conf_or_raise("python_version", config))
+    python_version = _get_conf_or_raise("python_version", config)
 
-    constraints_url = f"https://raw.githubusercontent.com/apache/airflow/constraints-{airflow_version}/constraints-{python_version}.txt"
+    constraints_url = (
+        f"https://raw.githubusercontent.com/apache/airflow/"
+        f"constraints-{airflow_version}/constraints-{_get_major_minor_version(python_version)}.txt"
+    )
 
     # Create virtual environment
     venv_path = verify_or_create_venv(venv_path, recreate_venv, python_version)
@@ -639,6 +681,54 @@ def logs(
     except Exception as e:
         print(f"An error occurred: {e}")
         raise typer.Exit(1)
+
+
+@app.command("list")
+def list_cmd():
+    """List all Airflow projects created using this CLI."""
+
+    tracking_file = GLOBAL_TRACKING_FILE
+
+    if not tracking_file.exists():
+        print("No tracked Airflow projects found.")
+        return
+
+    with open(tracking_file) as f:
+        contents = yaml.safe_load(f)
+
+    tracked_projects = contents.get("projects", [])
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Project Name", style="dim")
+    table.add_column("Project Path")
+    table.add_column("Python Version")
+    table.add_column("Airflow Version")
+
+    for project_dir in tracked_projects:
+        settings_file = Path(project_dir) / "settings.yaml"
+
+        if not settings_file.exists():
+            continue
+
+        with open(settings_file) as sf:
+            settings = yaml.safe_load(sf)
+
+        with open(Path(project_dir) / ".airflowctl" / "config.yaml") as cf:
+            project_config = yaml.safe_load(cf)
+
+        project_name = project_config.get("project_name", "N/A")
+        python_version = settings.get("python_version", "N/A")
+        airflow_version = settings.get("airflow_version", "N/A")
+
+        table.add_row(
+            project_name,
+            project_dir,
+            python_version,
+            airflow_version,
+        )
+
+    console = Console()
+    console.print(table)
 
 
 if __name__ == "__main__":

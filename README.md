@@ -24,7 +24,7 @@ specific versions of Apache Airflow, and manage virtual environments.
   - [Step 3: Start Airflow](#step-3-start-airflow)
   - [Step 4: Monitor Logs](#step-4-monitor-logs)
   - [Step 5: Stop Airflow](#step-5-stop-airflow)
-
+  - [Step 6: List Airflow Projects](#step-6-list-airflow-projects)
 
 
 ## Installation
@@ -177,6 +177,16 @@ Example:
 
 ```shell
 airflowctl stop my_airflow_project
+```
+
+### Step 6: List Airflow Projects
+
+To list all Airflow projects, use the list command.
+
+Example:
+
+```shell
+airflowctl list
 ```
 
 For more information and options, you can use the `--help` flag with each command.
