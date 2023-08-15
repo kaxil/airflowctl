@@ -7,7 +7,8 @@ import typer
 import yaml
 from rich import print
 
-from airflowctl.utils.install_airflow import get_airflow_versions
+from airflowctl.utils.install_airflow import get_airflow_versions, get_latest_airflow_version
+from airflowctl.utils.virtualenv import INSTALLED_PYTHON_VERSION
 
 
 def copy_example_dags(project_path: Path):
@@ -100,6 +101,11 @@ __pycache__/
 
     # Initialize the settings file
     settings_file = Path(project_dir / SETTINGS_FILENAME)
+
+    # Check if the project is an Astro project and use the Astro settings file
+    if is_astro_project(project_dir):
+        settings_file = Path(project_dir / ASTRO_SETTINGS_FILENAME)
+
     if not settings_file.exists():
         file_contents = f"""
 # Airflow version to be installed
@@ -179,6 +185,7 @@ def airflowctl_project_check(project_path: str | Path):
 
 
 SETTINGS_FILENAME = "settings.yaml"
+ASTRO_SETTINGS_FILENAME = "airflow_settings.yaml"
 GLOBAL_CONFIG_DIR = Path.home() / ".airflowctl"
 GLOBAL_TRACKING_FILE = GLOBAL_CONFIG_DIR / "tracked_projects.yaml"
 
@@ -188,3 +195,79 @@ def get_conf_or_raise(key: str, settings: dict) -> str:
         typer.echo(f"Key '{key}' not found in settings file.")
         raise typer.Exit(1)
     return settings[key]
+
+
+def is_astro_project(project_path: Path) -> bool:
+    """Identify the Astro project."""
+    astro_config_dir = project_path / ".astro"
+    if astro_config_dir.exists() or (project_path / ASTRO_SETTINGS_FILENAME).exists():
+        return True
+    return False
+
+
+def add_airflowctl_keys_to_astro_settings_file(astro_settings_file: Path):
+    """Add airflowctl keys to the Astro settings file."""
+
+    if not astro_settings_file.exists():
+        return
+    astro_settings = yaml.safe_load(astro_settings_file.read_text())
+
+    if "airflow_version" in astro_settings and "python_version" in astro_settings:
+        return
+
+    if "airflow_version" not in astro_settings:
+        latest_version = get_latest_airflow_version()
+        if not typer.prompt(
+            f"'airflow_version' not found in {ASTRO_SETTINGS_FILENAME} file."
+            f" What is the Airflow version?",
+            default=latest_version,
+        ):
+            raise typer.Exit(1)
+        astro_settings["airflow_version"] = latest_version
+
+    if "python_version" not in astro_settings:
+        print("Python version not found in Astro settings file. Using the installed Python version.")
+        astro_settings["python_version"] = INSTALLED_PYTHON_VERSION
+
+    with astro_settings_file.open("w") as f:
+        yaml.dump(astro_settings, f)
+
+
+def get_settings_file_path_or_raise(project_path: Path, settings_file: Path | str | None = None):
+    if is_astro_project(project_path):
+        settings_file = project_path / ASTRO_SETTINGS_FILENAME
+        typer.echo(f"Detected Astro project. Using Astro settings file ({settings_file}).")
+
+        # Add airflow.db and airflow.cfg to .gitignore
+        gitignore_file = project_path / ".gitignore"
+
+        if gitignore_file.exists():
+            gitignore_contents = gitignore_file.read_text()
+            if "airflow.db" not in gitignore_contents:
+                gitignore_contents += "\nairflow.db"
+            if "airflow.cfg" not in gitignore_contents:
+                gitignore_contents += "\nairflow.cfg"
+            if ".venev" not in gitignore_contents:
+                gitignore_contents += "\n.venv"
+            gitignore_file.write_text(gitignore_contents)
+
+        dockerignore_file = project_path / ".dockerignore"
+        if dockerignore_file.exists():
+            dockerignore_contents = dockerignore_file.read_text()
+            if "airflow.db" not in dockerignore_contents:
+                dockerignore_contents += "\nairflow.db"
+            if "airflow.cfg" not in dockerignore_contents:
+                dockerignore_contents += "\nairflow.cfg"
+            if ".venev" not in dockerignore_contents:
+                dockerignore_contents += "\n.venv"
+            dockerignore_file.write_text(dockerignore_contents)
+
+        add_airflowctl_keys_to_astro_settings_file(settings_file)
+
+    if not settings_file:
+        settings_file = project_path / SETTINGS_FILENAME
+    settings_file = Path(settings_file).absolute()
+    if not settings_file.exists():
+        typer.echo(f"Settings file '{settings_file}' not found.")
+        raise typer.Exit(1)
+    return settings_file

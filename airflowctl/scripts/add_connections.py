@@ -24,7 +24,22 @@ def _create_connection(conn_id: str, value: Any):
         return Connection(conn_id=conn_id, uri=value)
     if isinstance(value, dict):
         connection_parameter_names = get_connection_parameter_names() | {"extra_dejson"}
+        # Handle Astro projects
+        if "conn_port" in value:
+            value["port"] = value.pop("conn_port")
+        if "conn_login" in value:
+            value["login"] = value.pop("conn_login")
+        if "conn_password" in value:
+            value["password"] = value.pop("conn_password")
+        if "conn_schema" in value:
+            value["schema"] = value.pop("conn_schema")
+        if "conn_extra" in value:
+            value["extra"] = value.pop("conn_extra")
+        if "conn_host" in value:
+            value["host"] = value.pop("conn_host")
+
         current_keys = set(value.keys())
+
         if not current_keys.issubset(connection_parameter_names):
             illegal_keys = current_keys - connection_parameter_names
             illegal_keys_list = ", ".join(illegal_keys)
@@ -86,19 +101,25 @@ def _import_helper(connections_dict, overwrite: bool) -> None:
             print(f"Imported connection {conn_id}")
 
 
-# Import connections defined in settings.yaml file
-settings_file = sys.argv[1]
-settings_file_path = Path(settings_file)
-if not settings_file_path.exists():
-    raise AirflowException(f"Settings file not found: {settings_file_path}")
+if __name__ == "__main__":
+    # Import connections defined in settings.yaml file
+    settings_file = sys.argv[1]
+    settings_file_path = Path(settings_file)
+    if not settings_file_path.exists():
+        raise AirflowException(f"Settings file not found: {settings_file_path}")
 
-with open(settings_file_path) as f:
-    settings = yaml.safe_load(f)
+    with open(settings_file_path) as f:
+        settings = yaml.safe_load(f)
 
-connections = settings.get("connections", []) or []
-connections_list = {}
-for conn in connections:
-    connection = _create_connection(conn["conn_id"], conn)
-    connections_list[conn["conn_id"]] = connection
+    connections = settings.get("connections", []) or []
 
-_import_helper(connections_list, overwrite=True)
+    # Handle Astro projects
+    if "airflow" in settings:
+        connections = settings.get("airflow").get("connections", []) or []
+
+    connections_list = {}
+    for conn in connections:
+        connection = _create_connection(conn["conn_id"], conn)
+        connections_list[conn["conn_id"]] = connection
+
+    _import_helper(connections_list, overwrite=True)

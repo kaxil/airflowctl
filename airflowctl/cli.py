@@ -21,6 +21,7 @@ from airflowctl.utils.project import (
     airflowctl_project_check,
     create_project,
     get_conf_or_raise,
+    get_settings_file_path_or_raise,
 )
 from airflowctl.utils.variables import add_variables
 from airflowctl.utils.virtualenv import (
@@ -93,13 +94,7 @@ def build(
     airflowctl_project_check(project_path)
     project_path = Path(project_path).absolute()
 
-    if not settings_file:
-        settings_file = project_path / SETTINGS_FILENAME
-    settings_file = Path(settings_file).absolute()
-
-    if not settings_file.exists():
-        typer.echo(f"Settings file '{settings_file}' not found.")
-        raise typer.Exit(1)
+    settings_file = get_settings_file_path_or_raise(project_path, settings_file)
 
     with open(settings_file) as f:
         config = yaml.safe_load(f)
@@ -164,7 +159,9 @@ def start(
             raise typer.Exit(1)
         typer.echo("Building project...")
         build(
-            project_path=project_path, settings_file=Path(project_path) / "settings.yaml", venv_path=venv_path
+            project_path=project_path,
+            settings_file=Path(project_path) / SETTINGS_FILENAME,
+            venv_path=venv_path,
         )
 
     if not env_file.exists():
@@ -181,7 +178,9 @@ def start(
     try:
         # Verify that Airflow is installed and get the version
         print("Verifying Airflow installation...")
-        subprocess.run(f"{activate_cmd} && airflow version", shell=True, check=True, env=os.environ)
+        subprocess.run(
+            f"{activate_cmd} && airflow db upgrade && airflow version", shell=True, check=True, env=os.environ
+        )
 
         # Add connections
         add_connections(project_path, activate_cmd)

@@ -8,23 +8,25 @@ import typer
 import yaml
 from rich import print
 
+from airflowctl.utils.project import get_settings_file_path_or_raise, is_astro_project
+
 
 def add_variables(project_path: Path, activate_cmd: str):
-    # Check settings file exists
-    settings_yaml = Path(f"{project_path}/settings.yaml")
-    if not settings_yaml.exists():
-        typer.echo(f"Settings file {settings_yaml} not found.")
-        raise typer.Exit(1)
+    settings_yaml = get_settings_file_path_or_raise(project_path=project_path)
 
     with open(settings_yaml) as f:
         settings = yaml.safe_load(f)
 
     variables = settings.get("variables", []) or []
+
+    if is_astro_project(project_path):
+        variables = settings.get("airflow", {}).get("variables", []) or []
+
     if not variables:
         return
 
     # Check add_variables script exists
-    var_script_path = f"{Path(__file__).parent.absolute()}/scripts/add_variables.py"
+    var_script_path = f"{Path(__file__).parent.parent.absolute()}/scripts/add_variables.py"
     if not Path(var_script_path).exists():
         typer.echo(f"Script {var_script_path} not found.")
         raise typer.Exit(1)
