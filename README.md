@@ -284,15 +284,13 @@ allows you to run Airflow locally using docker.
 will then re-use it as `settings` file for `airflowctl`.
 
 For example, if you have an Astro CLI project:
-- Run the `airflowctl init . --build-start` command to initialize `airflowctl` from the project directoru.
+- Run the `airflowctl init . --build-start` command to initialize `airflowctl` from the project directory.
 Press `y` to continue when prompted.
 - It will then ask you for the Airflow version, enter the version you are using, by
 default uses the latest Airflow version, press enter to continue
 - It will use the installed Python version as the project's python version. If you
 want to use a different Python version, you can specify it in the `airflow_settings.yaml` file in the
 `python_version` field.
-
-```shell
 
 ```shell
 # From the project directory
@@ -304,11 +302,7 @@ Airflow project initialized in /Users/xyz/astro_project
 Detected Astro project. Using Astro settings file (/Users/kaxilnaik/Desktop/proj1/astro_project/airflow_settings.yaml).
 'airflow_version' not found in airflow_settings.yaml file. What is the Airflow version? [2.6.3]:
 Virtual environment created at /Users/xyz/astro_project/.venv
-Requirement already satisfied: pip in ./.venv/lib/python3.10/site-packages (22.0.4)
-Collecting pip
-  Using cached pip-23.2.1-py3-none-any.whl (2.1 MB)
-Requirement already satisfied: setuptools in ./.venv/lib/python3.10/site-packages (58.1.0)
-Collecting setuptools
+...
 ...
 ```
 
