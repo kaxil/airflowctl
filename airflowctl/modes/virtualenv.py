@@ -222,26 +222,37 @@ class VirtualenvMode:
         self.print_next_steps(venv_path=self.venv_path, airflow_version=airflow_version)
         print()
 
-    @staticmethod
-    def print_next_steps(venv_path: Path, airflow_version: str):
+    def print_next_steps(self, venv_path: Path, airflow_version: str):
         activated_venv_path = os.environ.get("VIRTUAL_ENV")
 
         next_steps = "Next Steps:"
         activate_command = activate_virtualenv_cmd(venv_path)
 
-        assert venv_path.exists()
+        assert (
+            venv_path.exists()
+        ), f"Virtual environment does not exist: {venv_path}. Run 'airflowctl build' to create it."
 
         need_to_activate = not activated_venv_path or activated_venv_path != os.path.dirname(venv_path)
         if need_to_activate:
             next_steps += f"""
         * Activate the virtual environment:
             [bold blue]{activate_command}[/bold blue]
+        """
 
-        * Source the environment variables:
-            [bold blue]$ source .env[/bold blue]
+        if (
+            os.environ.get("AIRFLOW_HOME") != str(self.project_path)
+            and self.env_file.exists()
+            and "AIRFLOW_HOME" not in self.env_file.read_text()
+        ):
+            next_steps += f"""
+        * Set AIRFLOW_HOME to the project path:
+            [bold blue]$ export AIRFLOW_HOME={self.project_path}[/bold blue]
         """
 
         next_steps += f"""
+        * Source the environment variables:
+            [bold blue]$ source .env[/bold blue]
+
         * You can now run all the  "airflow" commands in your terminal. For example:
             [bold blue]$ airflow version[/bold blue]
 

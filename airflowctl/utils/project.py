@@ -141,7 +141,8 @@ variables:
     # Initialize the .env file
     env_file = Path(project_dir / ".env")
     if not env_file.exists():
-        file_contents = """
+        file_contents = f"""
+AIRFLOW_HOME={project_dir}
 AIRFLOW__CORE__LOAD_EXAMPLES=False
 AIRFLOW__CORE__FERNET_KEY=d6Vefz3G9U_ynXB3cr7y_Ak35tAHkEGAVxuz_B-jzWw=
 AIRFLOW__WEBSERVER__WORKERS=2
