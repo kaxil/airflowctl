@@ -25,14 +25,14 @@ class VirtualenvMode:
     def __init__(
         self,
         project_path: Path,  # TODO: Make this current working directory by default
-        python_version: str = INSTALLED_PYTHON_VERSION,
+        python_version: str | None = None,
         airflow_version: str | None = None,
     ):
         self.project_path = project_path if isinstance(project_path, Path) else Path(project_path)
         self.project_path = self.project_path.absolute()
 
-        self.python_version = python_version
         self.airflow_version = airflow_version
+        self.python_version = python_version
         # TODO: Make this just a Path object
         self.venv_path: Path = self.project_path / ".venv"
         self.env_file: Path = self.project_path / ".env"
@@ -42,6 +42,18 @@ class VirtualenvMode:
 
     def build(self, recreate_venv: bool = False):
         venv_path = str(self.venv_path)
+
+        if not self.airflow_version:
+            settings_file = get_settings_file_path_or_raise(self.project_path)
+            with settings_file.open() as f:
+                settings = yaml.safe_load(f)
+            self.airflow_version = settings.get("airflow_version")
+
+        if not self.python_version:
+            settings_file = get_settings_file_path_or_raise(self.project_path)
+            with settings_file.open() as f:
+                settings = yaml.safe_load(f)
+            self.python_version = settings.get("python_version", INSTALLED_PYTHON_VERSION)
 
         # Create virtual environment
         venv_path = verify_or_create_venv(
@@ -55,6 +67,7 @@ class VirtualenvMode:
             version=self.airflow_version,
             venv_path=venv_path,
             python_version=self.python_version,
+            project_path=self.project_path,
         )
 
         # add venv_path to config.yaml

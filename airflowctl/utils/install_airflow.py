@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from pathlib import Path
 
 import httpx
 from rich import print
@@ -33,14 +34,27 @@ def get_latest_airflow_version(verbose: bool = False) -> str:
         return "2.7.0"
 
 
-def is_airflow_installed(venv_path: str) -> bool:
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-    if not os.path.exists(venv_bin_python):
+def is_airflow_installed(venv_path: str, airflow_version, project_path: Path) -> bool:
+    venv_bin_airflow = os.path.join(venv_path, "bin", "airflow")
+    if not os.path.exists(venv_bin_airflow):
         return False
 
     try:
-        subprocess.run([venv_bin_python, "-m", "airflow", "version"], check=True, capture_output=True)
-        return True
+        completed_process = subprocess.run([venv_bin_airflow, "version"], stdout=subprocess.PIPE, text=True)
+        installed_version = completed_process.stdout.strip()
+        if installed_version == airflow_version:
+            return True
+        else:
+            print(
+                f"[bold yellow]Apache Airflow {installed_version} is installed. "
+                f"Apache Airflow {airflow_version} is required.[/bold yellow]"
+            )
+            # Remove airflow.db if it exists to prevent conflicts with DB migrations
+            airflow_db_path = project_path / "airflow.db"
+            if airflow_db_path.exists():
+                airflow_db_path.unlink()
+
+            return False
     except subprocess.CalledProcessError:
         return False
 
@@ -49,11 +63,12 @@ def install_airflow(
     version: str,
     venv_path: str,
     python_version: str,
+    project_path: Path,
     extras: str = "",
     requirements: str = "",
     verbose: bool = False,
 ):
-    if is_airflow_installed(venv_path):
+    if is_airflow_installed(venv_path, version, project_path=project_path):
         print(
             f"[bold yellow]Apache Airflow {version} is already installed. Skipping installation.[/bold yellow]"
         )
