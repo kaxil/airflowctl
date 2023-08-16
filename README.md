@@ -306,6 +306,15 @@ Virtual environment created at /Users/xyz/astro_project/.venv
 ...
 ```
 
+If you see an error like the following, remove `airflow.cfg` file from the project directory and remove
+`AIRFLOW_HOME` from `.env` file if it exists and try again.
+
+```shell
+Error: there might be a problem with your project starting up.
+The webserver health check timed out after 1m0s but your project will continue trying to start.
+Run 'astro dev logs --webserver | --scheduler' for details.
+```
+
 ## License
 
 This project is licensed under the terms of the [Apache 2.0 License](LICENSE)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 
 import typer
@@ -8,7 +9,8 @@ import yaml
 from rich import print
 
 from airflowctl.utils.install_airflow import get_airflow_versions, get_latest_airflow_version
-from airflowctl.utils.virtualenv import INSTALLED_PYTHON_VERSION
+
+INSTALLED_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 
 def copy_example_dags(project_path: Path):
@@ -139,8 +141,7 @@ variables:
     # Initialize the .env file
     env_file = Path(project_dir / ".env")
     if not env_file.exists():
-        file_contents = f"""
-AIRFLOW_HOME={project_dir}
+        file_contents = """
 AIRFLOW__CORE__LOAD_EXAMPLES=False
 AIRFLOW__CORE__FERNET_KEY=d6Vefz3G9U_ynXB3cr7y_Ak35tAHkEGAVxuz_B-jzWw=
 AIRFLOW__WEBSERVER__WORKERS=2
@@ -233,7 +234,11 @@ def add_airflowctl_keys_to_astro_settings_file(astro_settings_file: Path):
         yaml.dump(astro_settings, f)
 
 
-def get_settings_file_path_or_raise(project_path: Path, settings_file: Path | str | None = None):
+def get_settings_file_path_or_raise(
+    project_path: Path,
+    settings_file: Path | str | None = None,
+    raise_if_not_found: bool = True,
+) -> Path:
     if is_astro_project(project_path):
         settings_file = project_path / ASTRO_SETTINGS_FILENAME
         typer.echo(f"Detected Astro project. Using Astro settings file ({settings_file}).")
@@ -267,7 +272,7 @@ def get_settings_file_path_or_raise(project_path: Path, settings_file: Path | st
     if not settings_file:
         settings_file = project_path / SETTINGS_FILENAME
     settings_file = Path(settings_file).absolute()
-    if not settings_file.exists():
+    if not settings_file.exists() and raise_if_not_found:
         typer.echo(f"Settings file '{settings_file}' not found.")
         raise typer.Exit(1)
     return settings_file
