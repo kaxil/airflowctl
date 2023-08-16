@@ -36,8 +36,9 @@ your Airflow projects, even for Python versions that are not installed on your s
   - [Step 4: Monitor Logs](#step-4-monitor-logs)
   - [Step 5: Stop Airflow](#step-5-stop-airflow)
   - [Step 6: List Airflow Projects](#step-6-list-airflow-projects)
-  - [Step 7: Show Project Info & Using Airflow commands](#step-7-show-project-info--using-airflow-commands)
-  - [Step 8: Changing Airflow configuration](#step-8-changing-airflow-configurations)
+  - [Step 7: Show Project Info](#step-7-show-project-info)
+  - [Step 8: Running Airflow Commands](#step-8-running-airflow-commands)
+  - [Step 9: Changing Airflow configuration](#step-9-changing-airflow-configurations)
 - [Using with other Airflow tools](#using-with-other-airflow-tools)
   - [Astro CLI](#astro-cli)
 
@@ -208,7 +209,7 @@ Example:
 airflowctl list
 ```
 
-### Step 7: Show Project Info & Using Airflow commands
+### Step 7: Show Project Info
 
 To show project info, use the info command.
 
@@ -222,7 +223,83 @@ airflowctl info
 airflowctl info my_airflow_project
 ```
 
-To run Airflow commands, activate the virtual environment first and then run the commands.
+### Step 8: Running Airflow commands
+
+To run Airflow commands, use the `airflowctl airflow` command. All the commands after
+`airflowctl airflow` are passed to the Airflow CLI.:
+
+```shell
+# From the project directory
+airflowctl airflow <airflow_command>
+```
+
+Example:
+
+```shell
+$ airflowctl airflow version
+2.6.3
+```
+
+You can also run `airflowctl airflow --help` to see the list of available commands.
+
+```shell
+$ airflowctl airflow --help
+Usage: airflowctl airflow [OPTIONS] COMMAND [ARGS]...
+
+  Run Airflow commands.
+
+Positional Arguments:
+  GROUP_OR_COMMAND
+
+    Groups:
+      celery         Celery components
+      config         View configuration
+      connections    Manage connections
+      dags           Manage DAGs
+      db             Database operations
+      jobs           Manage jobs
+      kubernetes     Tools to help run the KubernetesExecutor
+      pools          Manage pools
+      providers      Display providers
+      roles          Manage roles
+      tasks          Manage tasks
+      users          Manage users
+      variables      Manage variables
+
+    Commands:
+      cheat-sheet    Display cheat sheet
+      dag-processor  Start a standalone Dag Processor instance
+      info           Show information about current Airflow and environment
+      kerberos       Start a kerberos ticket renewer
+      plugins        Dump information about loaded plugins
+      rotate-fernet-key
+                     Rotate encrypted connection credentials and variables
+      scheduler      Start a scheduler instance
+      standalone     Run an all-in-one copy of Airflow
+      sync-perm      Update permissions for existing roles and optionally DAGs
+      triggerer      Start a triggerer instance
+      version        Show the version
+      webserver      Start a Airflow webserver instance
+
+Options:
+  -h, --help         show this help message and exit
+```
+
+Example:
+
+```shell
+# Listing dags
+$ airflowctl airflow dags list
+dag_id            | filepath             | owner   | paused
+==================+======================+=========+=======
+example_dag_basic | example_dag_basic.py | airflow | True
+
+
+# Running standalone
+$ airflowctl airflow standalone
+```
+
+Or you can activate the virtual environment first and then run the commands as shown below.
 
 Example:
 
@@ -240,7 +317,7 @@ To add a new DAG, add the DAG file to the `dags` directory.
 To edit an existing DAG, edit the DAG file in the `dags` directory.
 The changes will be reflected in the Airflow web server.
 
-### Step 8: Changing Airflow Configurations
+### Step 9: Changing Airflow Configurations
 
 `airflowctl` by default uses SQLite as the backend database and `SequentialExecutor` as the executor.
 However, if you want to use other databases or executors, you can stop the project and

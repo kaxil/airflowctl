@@ -24,6 +24,14 @@ app = typer.Typer()
 # TODO: Add a --verbose flag to all commands
 # TODO: Add a --project-path flag to all commands
 
+project_path_argument = typer.Argument(
+    Path.cwd(),
+    help="Absolute path to the Airflow project directory.",
+    exists=True,
+    file_okay=False,
+    resolve_path=True,
+)
+
 
 @app.command()
 def init(
@@ -63,7 +71,7 @@ def init(
 
 @app.command()
 def build(
-    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    project_path: Path = project_path_argument,
     settings_file: Path = typer.Option(
         None, help="Path to the settings file. Defaults to PROJECT_DIR/settings.yaml.", show_default=False
     ),
@@ -97,7 +105,7 @@ def build(
 
 @app.command()
 def start(
-    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    project_path: Path = project_path_argument,
     background: bool = typer.Option(
         False,
         help="Run Airflow in the background.",
@@ -118,9 +126,7 @@ def start(
 
 
 @app.command()
-def stop(
-    project_path: Path = typer.Argument(default=Path.cwd(), help="Path to the Airflow project directory."),
-):
+def stop(project_path: Path = project_path_argument):
     """Stop a running background Airflow process and its entire process tree."""
     airflowctl_project_check(project_path)
     mode = VirtualenvMode(project_path)
@@ -129,7 +135,7 @@ def stop(
 
 @app.command()
 def logs(
-    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
+    project_path: Path = project_path_argument,
     webserver: bool = typer.Option(False, "-w", help="Filter logs for the Webserver"),
     scheduler: bool = typer.Option(False, "-s", help="Filter logs for the Scheduler"),
     triggerer: bool = typer.Option(False, "-t", help="Filter logs for the Triggerer"),
@@ -190,9 +196,7 @@ def list_cmd():
 
 
 @app.command()
-def info(
-    project_path: Path = typer.Argument(Path.cwd(), help="Absolute path to the Airflow project directory."),
-):
+def info(project_path: Path = project_path_argument):
     """Display information about the current Airflow project."""
 
     airflowctl_project_check(project_path)
@@ -210,6 +214,36 @@ def info(
 
     mode = VirtualenvMode(project_path=project_path)
     mode.print_info(project_config=project_config, console=console)
+
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def airflow(
+    ctx: typer.Context,
+    project_path: Path = typer.Option(
+        Path.cwd(),
+        help="Absolute path to the Airflow project directory.",
+        exists=True,
+        file_okay=False,
+        resolve_path=True,
+    ),
+):
+    """Forward commands to Airflow CLI."""
+    airflowctl_project_check(project_path)
+
+    command = " ".join(ctx.args)
+
+    mode = VirtualenvMode(project_path)
+    mode.run_airflow_command(command)
+
+
+@app.callback()
+def main(ctx: typer.Context):
+    """Streamline getting started with Apache Airflow™ and managing multiple Airflow projects."""
+
+    # If the subcommand is 'airflow', we don't want to show the "airflowctl "help option
+    # and instead want to show the "airflow" help option
+    if ctx.invoked_subcommand == "airflow":
+        ctx.help_option_names = []
 
 
 if __name__ == "__main__":

@@ -50,3 +50,8 @@ repos:
         language: python
         types: [text]
         exclude: poetry.lock$
+
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: v3.10.2
+    hooks:
+      - id: markdown-link-check

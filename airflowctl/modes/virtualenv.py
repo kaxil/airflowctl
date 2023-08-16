@@ -214,6 +214,19 @@ class VirtualenvMode:
             typer.echo(f"Error stopping background processes: {e}")
             raise typer.Exit(1)
 
+    def run_airflow_command(self, command: str):
+        # Source the .env file to set environment variables
+        source_env_file(self.env_file)
+        os.environ["AIRFLOW_HOME"] = str(self.project_path)
+
+        activate_cmd = activate_virtualenv_cmd(self.venv_path)
+
+        try:
+            subprocess.run(f"{activate_cmd} && airflow {command}", shell=True, check=True, env=os.environ)
+        except subprocess.CalledProcessError as e:
+            typer.echo(f"Error running Airflow command: {e}")
+            raise typer.Exit(1)
+
     def print_info(self, console: Console, project_config: dict | None = None):
         venv_path = Path(project_config.get("venv_path", self.venv_path))
         venv_path = venv_path.absolute() if venv_path.exists() else "N/A"
