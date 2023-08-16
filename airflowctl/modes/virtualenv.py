@@ -251,7 +251,7 @@ class VirtualenvMode:
         need_to_activate = not activated_venv_path or activated_venv_path != os.path.dirname(venv_path)
         if need_to_activate:
             next_steps += f"""
-        * Activate the virtual environment:
+        # Activate the virtual environment:
             [bold blue]{activate_command}[/bold blue]
         """
 
@@ -261,24 +261,24 @@ class VirtualenvMode:
             and "AIRFLOW_HOME" not in self.env_file.read_text()
         ):
             next_steps += f"""
-        * Set AIRFLOW_HOME to the project path:
+        # Set AIRFLOW_HOME to the project path:
             [bold blue]$ export AIRFLOW_HOME={self.project_path}[/bold blue]
         """
 
         next_steps += f"""
-        * Source the environment variables:
+        # Source the environment variables:
             [bold blue]$ source .env[/bold blue]
 
-        * You can now run all the  "airflow" commands in your terminal. For example:
+        # You can now run all the  "airflow" commands in your terminal. For example:
             [bold blue]$ airflow version[/bold blue]
 
-        * Run Apache Airflow in standalone mode using the following command:
+        # Run Apache Airflow in standalone mode using the following command:
             [bold blue]$ airflow standalone[/bold blue]
 
-        * Access the Airflow UI in your web browser at: [bold cyan]http://localhost:8080[/bold cyan]
+        # Access the Airflow UI in your web browser at: [bold cyan]http://localhost:8080[/bold cyan]
 
-        For more information and guidance, please refer to the Apache Airflow documentation:
-        [bold cyan]https://airflow.apache.org/docs/apache-airflow/{airflow_version}/[/bold cyan]
+        # For more information and guidance, please refer to the Apache Airflow documentation:
+        # [bold cyan]https://airflow.apache.org/docs/apache-airflow/{airflow_version}/[/bold cyan]
         """
 
         print(next_steps)
