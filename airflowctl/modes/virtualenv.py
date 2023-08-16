@@ -106,6 +106,10 @@ class VirtualenvMode:
                 )
                 return
 
+            if not self.background_process_ids_file.exists():
+                self.background_process_ids_file.parent.mkdir(parents=True, exist_ok=True)
+                self.background_process_ids_file.touch()
+
             bg_process_file = str(self.background_process_ids_file.resolve())
 
             # Create a temporary file to capture the logs
@@ -122,7 +126,6 @@ class VirtualenvMode:
 
                 process_id = process.pid
                 print(f"Airflow is starting in the background (PID: {int(process_id) + 1}).")
-                print(f"Airflow is {self.background_process_ids_file.read_text()}")
                 print("Logs are being captured. You can use 'airflowctl logs' to view the logs.")
 
         except subprocess.CalledProcessError as e:
