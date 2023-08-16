@@ -106,6 +106,8 @@ class VirtualenvMode:
                 )
                 return
 
+            bg_process_file = str(self.background_process_ids_file.resolve())
+
             # Create a temporary file to capture the logs
             with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
                 # Save the temporary file name to a known location
@@ -113,18 +115,15 @@ class VirtualenvMode:
 
                 # Activate the virtual environment and then run the airflow command in the background
                 process = subprocess.Popen(
-                    f"{activate_cmd} && airflow standalone > {temp_file.name} 2>&1 &",
+                    f"{activate_cmd} && airflow standalone > {temp_file.name} 2>&1 & echo $! > {bg_process_file}",
                     shell=True,
                     env=os.environ,
                 )
 
                 process_id = process.pid
-                print(f"Airflow is starting in the background (PID: {process_id}).")
+                print(f"Airflow is starting in the background (PID: {int(process_id) + 1}).")
+                print(f"Airflow is {self.background_process_ids_file.read_text()}")
                 print("Logs are being captured. You can use 'airflowctl logs' to view the logs.")
-
-            # Persist the process ID to a file
-            with open(self.background_process_ids_file, "w") as f:
-                f.write(str(process_id))
 
         except subprocess.CalledProcessError as e:
             typer.echo(f"Error starting Airflow: {e}")
@@ -192,7 +191,9 @@ class VirtualenvMode:
         try:
             for pid in process_ids:
                 self._terminate_process_tree(pid)
-            print("All background processes and their entire process trees have been stopped.")
+            print(
+                f"All background processes ({process_ids}) and their entire process trees have been stopped."
+            )
         except Exception as e:
             typer.echo(f"Error stopping background processes: {e}")
             raise typer.Exit(1)
