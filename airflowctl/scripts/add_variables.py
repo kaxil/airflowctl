@@ -18,6 +18,9 @@ def variables_import(settings_file_path: Path):
             variable["serialize_json"] = not isinstance(variable.get("value", ""), str)
 
         variable_name = variable.pop("key", "") or variable.pop("variable_name", "")
+        if not variable_name:
+            print("Variable name empty. Skipping.")
+            continue
         variable_value = variable.pop("value", "") or variable.pop("variable_value", "")
 
         try:
