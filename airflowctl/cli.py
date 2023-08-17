@@ -169,7 +169,11 @@ def list_cmd():
     table.add_column("Airflow Version")
 
     for project_dir in tracked_projects:
-        settings_file = get_settings_file_path_or_raise(raise_if_not_found=False)
+        settings_file = get_settings_file_path_or_raise(
+            project_path=Path(project_dir),
+            raise_if_not_found=False,
+            verbose=False,
+        )
 
         if not settings_file.exists():
             continue
@@ -177,7 +181,11 @@ def list_cmd():
         with open(settings_file) as sf:
             settings = yaml.safe_load(sf)
 
-        with open(Path(project_dir) / ".airflowctl" / "config.yaml") as cf:
+        config_file = Path(project_dir) / ".airflowctl" / "config.yaml"
+        if not config_file.exists():
+            continue
+
+        with open(config_file) as cf:
             project_config = yaml.safe_load(cf)
 
         project_name = project_config.get("project_name", "N/A")

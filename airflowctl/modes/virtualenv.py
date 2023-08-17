@@ -74,7 +74,7 @@ class VirtualenvMode:
         project_config_yaml = self.project_path / ".airflowctl" / "config.yaml"
         with project_config_yaml.open() as f:
             project_config = yaml.safe_load(f) or {}
-        project_config["venv_path"] = venv_path
+        project_config["venv_path"] = str(venv_path)
         with project_config_yaml.open("w") as f:
             yaml.dump(project_config, f)
 

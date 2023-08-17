@@ -239,10 +239,15 @@ def get_settings_file_path_or_raise(
     project_path: Path,
     settings_file: Path | str | None = None,
     raise_if_not_found: bool = True,
+    verbose: bool = True,
 ) -> Path:
+    if isinstance(project_path, str):
+        project_path = Path(project_path)
+
     if is_astro_project(project_path):
         settings_file = project_path / ASTRO_SETTINGS_FILENAME
-        typer.echo(f"Detected Astro project. Using Astro settings file ({settings_file}).")
+        if verbose:
+            typer.echo(f"Detected Astro project. Using Astro settings file ({settings_file}).")
 
         # Add airflow.db and airflow.cfg to .gitignore
         gitignore_file = project_path / ".gitignore"
