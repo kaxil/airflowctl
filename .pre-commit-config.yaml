@@ -1,4 +1,6 @@
 ---
+ci:
+  skip: [markdown-link-check]
 default_stages: [commit, push]
 minimum_pre_commit_version: "1.20.0"
 repos:
