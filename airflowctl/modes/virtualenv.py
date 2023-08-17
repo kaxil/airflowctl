@@ -310,6 +310,8 @@ class VirtualenvMode:
 
 
 def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
+    if isinstance(venv_path, str):
+        venv_path = Path(venv_path)
     venv_path = str(venv_path.absolute())
 
     # Check if pyenv is available
@@ -341,7 +343,8 @@ def create_virtualenv_with_specific_python_version(venv_path: Path, python_versi
 
 
 def verify_or_create_venv(venv_path: str | Path, recreate: bool, python_version: str):
-    venv_path = os.path.abspath(venv_path)
+    if isinstance(venv_path, str):
+        venv_path = Path(venv_path).absolute()
 
     if recreate and os.path.exists(venv_path):
         print(f"Recreating virtual environment at [bold blue]{venv_path}[/bold blue]")
