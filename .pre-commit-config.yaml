@@ -55,3 +55,4 @@ repos:
     rev: v3.10.2
     hooks:
       - id: markdown-link-check
+        args: ["--config=./.github/scripts/mlc-config.json"]
