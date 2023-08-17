@@ -354,6 +354,9 @@ AIRFLOW__CORE__EXECUTOR=LocalExecutor
 This should automatically happen for you when you run `airflowctl airflow` command if
 Airflow version `==2.6.*`.
 
+> [!WARNING]
+> Sqlite is not recommended for production use. Use it only for development and testing only.
+
 ### Other Commands
 
 For more information and options, you can use the `--help` flag with each command.
