@@ -6,20 +6,20 @@ from typing import Any
 
 import yaml
 from airflow.exceptions import AirflowException
+from airflow.models.connection import Connection
+from airflow.utils import helpers
+from airflow.utils.session import create_session
 from rich import print
+from sqlalchemy import select
 
 
 def get_connection_parameter_names() -> set[str]:
     """Returns :class:`airflow.models.connection.Connection` constructor parameters."""
-    from airflow.models.connection import Connection
-
     return {k for k in signature(Connection.__init__).parameters.keys() if k != "self"}
 
 
 def _create_connection(conn_id: str, value: Any):
     """Creates a connection based on a URL or JSON object."""
-    from airflow.models.connection import Connection
-
     if isinstance(value, str):
         return Connection(conn_id=conn_id, uri=value)
     if isinstance(value, dict):
@@ -74,10 +74,6 @@ def _import_helper(connections_dict, overwrite: bool) -> None:
 
     :param overwrite: Whether to skip or overwrite on collision.
     """
-    from airflow.models.connection import Connection
-    from airflow.utils import helpers
-    from airflow.utils.session import create_session
-    from sqlalchemy import select
 
     with create_session() as session:
         for conn_id, conn in connections_dict.items():

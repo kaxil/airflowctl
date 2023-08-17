@@ -310,6 +310,8 @@ class VirtualenvMode:
 
 
 def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
+    venv_path = str(venv_path.absolute())
+
     # Check if pyenv is available
     if shutil.which("pyenv"):
         # Use pyenv to install and set the desired Python version
