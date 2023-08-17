@@ -90,9 +90,7 @@ class VirtualenvMode:
             typer.echo(".env file not found.")
             raise typer.Exit(1)
 
-        # Source the .env file to set environment variables
-        source_env_file(self.env_file)
-        os.environ["AIRFLOW_HOME"] = str(project_path)
+        self._setup_env_vars_to_run_airflow()
 
         activate_cmd = activate_virtualenv_cmd(self.venv_path)
 
@@ -215,10 +213,7 @@ class VirtualenvMode:
             raise typer.Exit(1)
 
     def run_airflow_command(self, command: str):
-        # Source the .env file to set environment variables
-        source_env_file(self.env_file)
-        os.environ["AIRFLOW_HOME"] = str(self.project_path)
-
+        self._setup_env_vars_to_run_airflow()
         activate_cmd = activate_virtualenv_cmd(self.venv_path)
 
         try:
@@ -307,6 +302,23 @@ class VirtualenvMode:
             process.terminate()
         except psutil.NoSuchProcess:
             pass
+
+    def _setup_env_vars_to_run_airflow(self):
+        # Source the .env file to set environment variables
+        source_env_file(self.env_file)
+        os.environ["AIRFLOW_HOME"] = str(self.project_path)
+
+        # Run LocalExecutor for Airflow 2.6
+        if not self.airflow_version:
+            settings_file = get_settings_file_path_or_raise(self.project_path)
+            with settings_file.open() as f:
+                settings = yaml.safe_load(f)
+            self.airflow_version = settings.get("airflow_version")
+
+        # TODO: Check for Airflow version >= 2.6 instead of hardcoding it
+        if self.airflow_version and self.airflow_version.startswith("2.6"):
+            os.environ["AIRFLOW__CORE__EXECUTOR"] = "LocalExecutor"
+            os.environ["_AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK"] = "1"
 
 
 def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
