@@ -342,6 +342,14 @@ airflowctl start my_airflow_project
 Check the [Airflow documentation](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html)
 for all the available Airflow configurations.
 
+For Airflow >= 2.6, you can run `LocalExecutor` with `sqlite` as the backend database by
+adding the following environment variable to the `.env` file:
+
+```shell
+_AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK=1
+AIRFLOW__CORE__EXECUTOR=LocalExecutor
+```
+
 ### Other Commands
 
 For more information and options, you can use the `--help` flag with each command.
