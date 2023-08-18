@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 import yaml
 from dotenv import load_dotenv
+from packaging import version
 from rich import print
 from rich.console import Console
 
@@ -315,10 +316,21 @@ class VirtualenvMode:
                 settings = yaml.safe_load(f)
             self.airflow_version = settings.get("airflow_version")
 
-        # TODO: Check for Airflow version >= 2.6 instead of hardcoding it
-        if self.airflow_version and self.airflow_version.startswith("2.6"):
+        if (
+            self.airflow_version
+            and is_valid_pep440_version(self.airflow_version)
+            and version.parse(self.airflow_version) >= version.parse("2.6.0")
+        ):
             os.environ["AIRFLOW__CORE__EXECUTOR"] = "LocalExecutor"
             os.environ["_AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK"] = "1"
+
+
+def is_valid_pep440_version(version_str: str) -> bool:
+    try:
+        version.parse(version_str)
+        return True
+    except version.InvalidVersion:
+        return False
 
 
 def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
