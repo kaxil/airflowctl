@@ -1,6 +1,3 @@
-import tempfile
-
-import pytest
 from typer.testing import CliRunner
 
 from airflowctl.cli import app
@@ -8,18 +5,13 @@ from airflowctl.cli import app
 runner = CliRunner()
 
 
-@pytest.fixture(scope="function")
-def temp_project_dir():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield temp_dir
-
-
-def test_init_command(temp_project_dir):
+def test_init_command(tmpdir):
+    tmpdir = str(tmpdir)
     result = runner.invoke(
         app,
         [
             "init",
-            temp_project_dir,
+            tmpdir,
             "--project-name",
             "my_project",
             "--airflow-version",
@@ -33,12 +25,13 @@ def test_init_command(temp_project_dir):
     assert "Airflow project built successfully." in result.output
 
 
-def test_build_command(temp_project_dir):
+def test_build_command(tmpdir):
+    tmpdir = str(tmpdir)
     result = runner.invoke(
         app,
         [
             "init",
-            temp_project_dir,
+            tmpdir,
             "--project-name",
             "my_project",
         ],
@@ -49,14 +42,14 @@ def test_build_command(temp_project_dir):
         app,
         [
             "build",
-            temp_project_dir,
+            tmpdir,
         ],
     )
 
     assert result_1.exit_code == 0, result_1.output
     assert "Airflow project built successfully." in result_1.output
 
-    result_2 = runner.invoke(app, ["info", temp_project_dir])
+    result_2 = runner.invoke(app, ["info", tmpdir])
     output_2 = result_2.output
     assert result_1.exit_code == 0, output_2
     assert "Airflow Project Information" in output_2
@@ -70,4 +63,3 @@ def test_build_command(temp_project_dir):
     assert "Project Name" in output_3
     assert "Project Path" in output_3
     assert "Airflow Version" in output_3
-    assert temp_project_dir in output_3

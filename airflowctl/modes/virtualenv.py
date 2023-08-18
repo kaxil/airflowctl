@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import venv
 from pathlib import Path
 
@@ -130,14 +131,20 @@ class VirtualenvMode:
                 self.background_logs_info_file.write_text(temp_file.name)
 
                 # Activate the virtual environment and then run the airflow command in the background
-                process = subprocess.Popen(
+                subprocess.Popen(
                     f"{activate_cmd} && airflow standalone > {temp_file.name} 2>&1 & echo $! > {bg_process_file}",
                     shell=True,
                     env=os.environ,
                 )
 
-                process_id = process.pid
-                print(f"Airflow is starting in the background (PID: {int(process_id) + 1}).")
+                # Wait for a bit to ensure the subprocesses are started
+                time.sleep(5)
+
+                # Read the background process PID
+                with open(bg_process_file) as f:
+                    bg_process_pid = int(f.read())
+
+                print(f"Airflow is starting in the background (PID: {bg_process_pid}).")
                 print("Logs are being captured. You can use 'airflowctl logs' to view the logs.")
 
         except subprocess.CalledProcessError as e:
@@ -301,6 +308,7 @@ class VirtualenvMode:
             for child in process.children(recursive=True):
                 child.terminate()
             process.terminate()
+            process.wait(timeout=10)  # Wait for the main process to finish
         except psutil.NoSuchProcess:
             pass
 
