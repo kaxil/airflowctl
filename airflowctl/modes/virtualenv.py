@@ -355,7 +355,7 @@ def create_virtualenv_with_specific_python_version(venv_path: Path, python_versi
     py_venv_bin_python = os.path.join(python_ver_path, "bin", "python")
 
     # Create the virtual environment using venv
-    subprocess.run([py_venv_bin_python, "-m", "venv", venv_path], check=True)
+    subprocess.run([py_venv_bin_python, "-m", "venv", venv_path, "--clear"], check=True)
 
     venv_bin_python = os.path.join(venv_path, "bin", "python")
 

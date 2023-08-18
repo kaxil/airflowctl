@@ -64,7 +64,7 @@ def test_create_virtualenv_with_specific_python_version_pyenv_available():
                 ["pyenv", "prefix", python_version], returncode=0, stdout=f"{venv_path}\n"
             ),
             subprocess.CompletedProcess(
-                [str(venv_path / "bin" / "python"), "-m", "venv", str(venv_path)], returncode=0
+                [str(venv_path / "bin" / "python"), "-m", "venv", str(venv_path), "--clear"], returncode=0
             ),
             subprocess.CompletedProcess(
                 [str(venv_path / "bin" / "python"), "-m", "pip", "install", "--upgrade", "pip"], returncode=0
@@ -76,7 +76,7 @@ def test_create_virtualenv_with_specific_python_version_pyenv_available():
     expected_calls = [
         mock.call(["pyenv", "install", python_version, "--skip-existing"], check=True),
         mock.call(["pyenv", "prefix", python_version], stdout=subprocess.PIPE, text=True, check=True),
-        mock.call([str(venv_path / "bin" / "python"), "-m", "venv", str(venv_path)], check=True),
+        mock.call([str(venv_path / "bin" / "python"), "-m", "venv", str(venv_path), "--clear"], check=True),
         mock.call(
             [str(venv_path / "bin" / "python"), "-m", "pip", "install", "--upgrade", "pip"], check=True
         ),
