@@ -39,7 +39,7 @@ def create_project(
     GLOBAL_TRACKING_FILE.touch(exist_ok=True)
 
     available_airflow_vers = get_airflow_versions()
-    if airflow_version not in available_airflow_vers:
+    if airflow_version not in available_airflow_vers and not Path(airflow_version).exists():
         print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
         print(f"Please select a valid version from the list below: {available_airflow_vers}")
         raise typer.Exit(code=1)

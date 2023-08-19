@@ -67,7 +67,7 @@ class VirtualenvMode:
         # Install Airflow and dependencies
         install_airflow(
             version=self.airflow_version,
-            venv_path=venv_path,
+            venv_path=str(venv_path),
             python_version=self.python_version,
             project_path=self.project_path,
         )
@@ -323,6 +323,21 @@ class VirtualenvMode:
             with settings_file.open() as f:
                 settings = yaml.safe_load(f)
             self.airflow_version = settings.get("airflow_version")
+
+            # if self.airflow_version is a file or a directory, then it is a path to Airflow source code
+            if Path(self.airflow_version).exists():
+                try:
+                    output = subprocess.run(
+                        f"{self.venv_path}/bin/airflow version 2>/dev/null",
+                        shell=True,
+                        check=True,
+                        env=os.environ,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.airflow_version = output.stdout
+                except subprocess.CalledProcessError:
+                    pass
 
         if (
             self.airflow_version
