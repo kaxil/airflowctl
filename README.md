@@ -50,11 +50,15 @@ pip install airflowctl
 
 ## Quickstart
 
-To initialize a new Airflow project with the latest airflow version, build a venv and run:
+To initialize a new Airflow project with the latest airflow version, build a Virtual environment
+and run the project, run the following command:
 
 ```shell
 airflowctl init my_airflow_project --build-start
 ```
+
+This will start Airflow and display the logs in the terminal. You can
+access the Airflow UI at http://localhost:8080. To stop Airflow, press `Ctrl+C`.
 
 ## Usage
 
