@@ -81,20 +81,39 @@ def install_airflow(
 
     upgrade_pipeline_command = f"{venv_bin_python} -m pip install --upgrade pip setuptools wheel"
 
-    constraints_url = (
-        f"https://raw.githubusercontent.com/apache/airflow/"
-        f"constraints-{version}/constraints-{_get_major_minor_version(python_version)}.txt"
-    )
+    constraints_url = os.getenv("AIRFLOWCTL_CONSTRAINTS")
 
-    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install 'apache-airflow=={version}{extras}' --constraint {constraints_url}"
+    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install "
 
     if requirements:
         install_command += f" -r {requirements}"
 
+    extra_pip_flags = os.getenv("AIRFLOWCTL_PIP_FLAGS")
+    if extra_pip_flags:
+        install_command += f" {extra_pip_flags}"
+
+    # Check if version is a local path
+    is_local_path = Path(version).exists()
+
+    if is_local_path:
+        install_command = f"{install_command} . "
+    else:
+        install_command = f"{install_command} 'apache-airflow=={version}{extras}' "
+        constraints_url = constraints_url or (
+            f"https://raw.githubusercontent.com/apache/airflow/"
+            f"constraints-{version}/constraints-{_get_major_minor_version(python_version)}.txt"
+        )
+
+    if constraints_url:
+        install_command += f" --constraint {constraints_url} "
+
     try:
         if verbose:
             print(f"Running command: [bold]{install_command}[/bold]")
-        subprocess.run(install_command, shell=True, check=True)
+        if is_local_path:
+            subprocess.run(install_command, shell=True, check=True, cwd=version)
+        else:
+            subprocess.run(install_command, shell=True, check=True)
         print(f"[bold green]Apache Airflow {version} installed successfully![/bold green]")
         print(f"Virtual environment at {venv_path}")
     except subprocess.CalledProcessError:
