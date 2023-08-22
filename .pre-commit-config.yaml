@@ -39,8 +39,8 @@ repos:
       - id: black
         args: ["--config", "./pyproject.toml"]
 
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.284'
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.0.285'
     hooks:
       - id: ruff
 
@@ -54,7 +54,7 @@ repos:
         exclude: poetry.lock$
 
   - repo: https://github.com/tcort/markdown-link-check
-    rev: v3.10.2
+    rev: v3.11.2
     hooks:
       - id: markdown-link-check
         args: ["--config=./.github/scripts/mlc-config.json"]
