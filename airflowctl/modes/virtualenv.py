@@ -126,7 +126,7 @@ class VirtualenvMode:
             bg_process_file = str(self.background_process_ids_file.resolve())
 
             # Create a temporary file to capture the logs
-            with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
+            with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
                 # Save the temporary file name to a known location
                 self.background_logs_info_file.write_text(temp_file.name)
 
