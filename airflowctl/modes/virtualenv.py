@@ -29,6 +29,7 @@ class VirtualenvMode:
         project_path: Path,  # TODO: Make this current working directory by default
         python_version: str | None = None,
         airflow_version: str | None = None,
+        venv_path: str | None = None,
     ):
         self.project_path = project_path if isinstance(project_path, Path) else Path(project_path)
         self.project_path = self.project_path.absolute()
@@ -36,7 +37,7 @@ class VirtualenvMode:
         self.airflow_version = airflow_version
         self.python_version = python_version
         # TODO: Make this just a Path object
-        self.venv_path: Path = self.project_path / ".venv"
+        self.venv_path: Path = venv_path or self.project_path / ".venv"
         self.env_file: Path = self.project_path / ".env"
 
         self.background_process_ids_file: Path = self.project_path / ".airflowctl" / ".background_process_ids"

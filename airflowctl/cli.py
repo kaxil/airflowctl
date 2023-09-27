@@ -79,6 +79,10 @@ def build(
         False,
         help="Recreate virtual environment if it already exists.",
     ),
+    venv_path: Path = typer.Option(
+        None,
+        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
+    ),
 ):
     """
     Build an Airflow project. This command sets up the project environment, installs Apache Airflow
@@ -96,7 +100,7 @@ def build(
     airflow_version = get_conf_or_raise("airflow_version", config)
     python_version = get_conf_or_raise("python_version", config)
 
-    mode = VirtualenvMode(project_path, python_version, airflow_version)
+    mode = VirtualenvMode(project_path, python_version, airflow_version, venv_path)
     venv_path = mode.build(recreate_venv=recreate_venv)
 
     typer.echo("Airflow project built successfully.")
