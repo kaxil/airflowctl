@@ -25,11 +25,11 @@ from airflowctl.utils.variables import add_variables
 
 class VirtualenvMode:
     def __init__(
-            self,
-            project_path: Path,  # TODO: Make this current working directory by default
-            python_version: str | None = None,
-            airflow_version: str | None = None,
-            venv_path: Path | None = None,
+        self,
+        project_path: Path,  # TODO: Make this current working directory by default
+        python_version: str | None = None,
+        airflow_version: str | None = None,
+        venv_path: Path | None = None,
     ):
         self.project_path = project_path if isinstance(project_path, Path) else Path(project_path)
         self.project_path = self.project_path.absolute()
@@ -40,8 +40,9 @@ class VirtualenvMode:
         if not venv_path:
             self.venv_path = self.project_path / ".venv"
         else:
-            self.venv_path: Path = venv_path.absolute() if isinstance(project_path, Path) else Path(
-                project_path).absolute()
+            self.venv_path: Path = (
+                venv_path.absolute() if isinstance(project_path, Path) else Path(project_path).absolute()
+            )
         self.env_file: Path = self.project_path / ".env"
 
         self.background_process_ids_file: Path = self.project_path / ".airflowctl" / ".background_process_ids"
@@ -277,9 +278,9 @@ class VirtualenvMode:
         """
 
         if (
-                os.environ.get("AIRFLOW_HOME") != str(self.project_path)
-                and self.env_file.exists()
-                and "AIRFLOW_HOME" not in self.env_file.read_text()
+            os.environ.get("AIRFLOW_HOME") != str(self.project_path)
+            and self.env_file.exists()
+            and "AIRFLOW_HOME" not in self.env_file.read_text()
         ):
             next_steps += f"""
         # Set AIRFLOW_HOME to the project path:
@@ -345,9 +346,9 @@ class VirtualenvMode:
                     pass
 
         if (
-                self.airflow_version
-                and is_valid_pep440_version(self.airflow_version)
-                and version.parse(self.airflow_version) >= version.parse("2.6.0")
+            self.airflow_version
+            and is_valid_pep440_version(self.airflow_version)
+            and version.parse(self.airflow_version) >= version.parse("2.6.0")
         ):
             os.environ["AIRFLOW__CORE__EXECUTOR"] = "LocalExecutor"
             os.environ["_AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK"] = "1"
