@@ -16,7 +16,8 @@ from airflowctl.utils.project import (
     airflowctl_project_check,
     create_project,
     get_conf_or_raise,
-    get_settings_file_path_or_raise, GLOBAL_CONFIG_FILE, get_global_config,
+    get_global_config,
+    get_settings_file_path_or_raise,
 )
 
 app = typer.Typer()
