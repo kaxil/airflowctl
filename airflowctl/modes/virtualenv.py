@@ -29,7 +29,7 @@ class VirtualenvMode:
         project_path: Path,  # TODO: Make this current working directory by default
         python_version: str | None = None,
         airflow_version: str | None = None,
-        venv_path: Path | None = None,
+        venv_path: str | Path | None = None,
     ):
         self.project_path = project_path if isinstance(project_path, Path) else Path(project_path)
         self.project_path = self.project_path.absolute()

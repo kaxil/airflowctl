@@ -16,7 +16,7 @@ from airflowctl.utils.project import (
     airflowctl_project_check,
     create_project,
     get_conf_or_raise,
-    get_settings_file_path_or_raise,
+    get_settings_file_path_or_raise, GLOBAL_CONFIG_FILE, get_global_config,
 )
 
 app = typer.Typer()
@@ -121,8 +121,10 @@ def start(
 ):
     """Start Airflow."""
     airflowctl_project_check(project_path)
+    global_config = get_global_config()
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
-    mode = VirtualenvMode(project_path)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
     if not mode.has_built():
         # Build the project if it has not been built yet
         print("Project has not been built yet.")
@@ -137,7 +139,9 @@ def start(
 def stop(project_path: Path = project_path_argument):
     """Stop a running background Airflow process and its entire process tree."""
     airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path)
+    global_config = get_global_config()
+    venv_path = get_conf_or_raise("venv_path", global_config)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
     mode.stop()
 
 
@@ -151,7 +155,9 @@ def logs(
     """Continuously display live logs of the background Airflow processes."""
 
     airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path=project_path)
+    global_config = get_global_config()
+    venv_path = get_conf_or_raise("venv_path", global_config)
+    mode = VirtualenvMode(project_path=project_path, venv_path=venv_path)
     mode.logs(webserver=webserver, scheduler=scheduler, triggerer=triggerer)
 
 
@@ -216,6 +222,8 @@ def info(project_path: Path = project_path_argument):
     """Display information about the current Airflow project."""
 
     airflowctl_project_check(project_path)
+    global_config = get_global_config()
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
     project_path = Path(project_path)
     project_conf_path = Path(project_path) / ".airflowctl" / "config.yaml"
@@ -228,7 +236,7 @@ def info(project_path: Path = project_path_argument):
     console.print(f"Project Name: {project_name}")
     console.print(f"Project Path: {project_path.absolute()}")
 
-    mode = VirtualenvMode(project_path=project_path)
+    mode = VirtualenvMode(project_path=project_path, venv_path=venv_path)
     mode.print_info(project_config=project_config, console=console)
 
 
@@ -245,10 +253,12 @@ def airflow(
 ):
     """Forward commands to Airflow CLI."""
     airflowctl_project_check(project_path)
+    global_config = get_global_config()
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
     command = " ".join(ctx.args)
 
-    mode = VirtualenvMode(project_path)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
     mode.run_airflow_command(command)
 
 
