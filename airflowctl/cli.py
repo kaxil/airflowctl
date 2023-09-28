@@ -59,13 +59,17 @@ def init(
         default=False,
         help="Run Airflow in the background.",
     ),
+    venv_path: Path = typer.Option(
+        None,
+        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
+    ),
 ):
     """
     Initialize a new Airflow project.
     """
     project_dir, settings_file = create_project(project_name, project_path, airflow_version, python_version)
     if build_start:
-        build(project_path=project_dir, settings_file=settings_file, recreate_venv=False)
+        build(project_path=project_dir, settings_file=settings_file, recreate_venv=False, venv_path=venv_path)
         start(project_path=project_dir, background=background)
 
 
