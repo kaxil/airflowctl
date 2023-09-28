@@ -285,11 +285,16 @@ def get_settings_file_path_or_raise(
     return settings_file
 
 
-def get_global_config():
-    if not GLOBAL_CONFIG_FILE.exists():
-        typer.echo(f"Global config file '{GLOBAL_CONFIG_FILE}' not found.")
+def get_global_config(project_path: str | Path | None = None):
+    if not project_path:
+        global_config_path = GLOBAL_CONFIG_FILE
+    else:
+        global_config_path = project_path / ".airflowctl" / "config.yaml"
+
+    if not global_config_path.exists():
+        typer.echo(f"Global config file '{global_config_path}' not found.")
         raise typer.Exit(1)
 
-    with open(GLOBAL_CONFIG_FILE) as f:
+    with open(global_config_path) as f:
         config = yaml.safe_load(f)
     return config
