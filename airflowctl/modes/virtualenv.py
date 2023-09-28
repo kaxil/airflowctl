@@ -63,6 +63,9 @@ class VirtualenvMode:
                 settings = yaml.safe_load(f)
             self.python_version = settings.get("python_version", INSTALLED_PYTHON_VERSION)
 
+        # TODO: check if provided venv path needs to proceed the following operations. If true, skip those
+        #  i.e., existing venv has already met the requirements.
+
         # Create virtual environment
         venv_path = verify_or_create_venv(
             venv_path=venv_path,
