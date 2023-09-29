@@ -32,7 +32,7 @@ def copy_example_dags(project_path: Path):
 
 
 def create_project(
-        project_name: str, project_path: str | Path, airflow_version: str, python_version: str
+    project_name: str, project_path: str | Path, airflow_version: str, python_version: str
 ) -> tuple[Path, Path]:
     # Create a config directory for storing internal state and settings
     GLOBAL_CONFIG_DIR.mkdir(exist_ok=True)
@@ -221,9 +221,9 @@ def add_airflowctl_keys_to_astro_settings_file(astro_settings_file: Path):
     if "airflow_version" not in astro_settings:
         latest_version = get_latest_airflow_version()
         if not typer.prompt(
-                f"'airflow_version' not found in {ASTRO_SETTINGS_FILENAME} file."
-                f" What is the Airflow version?",
-                default=latest_version,
+            f"'airflow_version' not found in {ASTRO_SETTINGS_FILENAME} file."
+            f" What is the Airflow version?",
+            default=latest_version,
         ):
             raise typer.Exit(1)
         astro_settings["airflow_version"] = latest_version
@@ -237,10 +237,10 @@ def add_airflowctl_keys_to_astro_settings_file(astro_settings_file: Path):
 
 
 def get_settings_file_path_or_raise(
-        project_path: Path,
-        settings_file: Path | str | None = None,
-        raise_if_not_found: bool = True,
-        verbose: bool = True,
+    project_path: Path,
+    settings_file: Path | str | None = None,
+    raise_if_not_found: bool = True,
+    verbose: bool = True,
 ) -> Path:
     if isinstance(project_path, str):
         project_path = Path(project_path)
