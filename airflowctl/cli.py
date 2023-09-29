@@ -17,7 +17,7 @@ from airflowctl.utils.project import (
     create_project,
     get_conf_or_raise,
     get_global_config,
-    get_settings_file_path_or_raise,
+    get_settings_file_path_or_raise, validate_and_get_airflowctl_global_config,
 )
 
 app = typer.Typer()
@@ -36,34 +36,34 @@ project_path_argument = typer.Argument(
 
 @app.command()
 def init(
-    project_path: Path = typer.Argument(
-        ...,
-        help="Path to initialize the project in.",
-    ),
-    project_name: str = typer.Option(
-        default="",
-        help="Name of the Airflow project to be initialized.",
-    ),
-    airflow_version: str = typer.Option(
-        default=get_latest_airflow_version(),
-        help="Version of Apache Airflow to be used in the project. Defaults to latest.",
-    ),
-    python_version: str = typer.Option(
-        default=INSTALLED_PYTHON_VERSION,
-        help="Version of Python to be used in the project.",
-    ),
-    build_start: bool = typer.Option(
-        default=False,
-        help="Build the project and start after initialization.",
-    ),
-    background: bool = typer.Option(
-        default=False,
-        help="Run Airflow in the background.",
-    ),
-    venv_path: Path = typer.Option(
-        None,
-        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
-    ),
+        project_path: Path = typer.Argument(
+            ...,
+            help="Path to initialize the project in.",
+        ),
+        project_name: str = typer.Option(
+            default="",
+            help="Name of the Airflow project to be initialized.",
+        ),
+        airflow_version: str = typer.Option(
+            default=get_latest_airflow_version(),
+            help="Version of Apache Airflow to be used in the project. Defaults to latest.",
+        ),
+        python_version: str = typer.Option(
+            default=INSTALLED_PYTHON_VERSION,
+            help="Version of Python to be used in the project.",
+        ),
+        build_start: bool = typer.Option(
+            default=False,
+            help="Build the project and start after initialization.",
+        ),
+        background: bool = typer.Option(
+            default=False,
+            help="Run Airflow in the background.",
+        ),
+        venv_path: Path = typer.Option(
+            None,
+            help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
+        ),
 ):
     """
     Initialize a new Airflow project.
@@ -76,18 +76,18 @@ def init(
 
 @app.command()
 def build(
-    project_path: Path = project_path_argument,
-    settings_file: Path = typer.Option(
-        None, help="Path to the settings file. Defaults to PROJECT_DIR/settings.yaml.", show_default=False
-    ),
-    recreate_venv: bool = typer.Option(
-        False,
-        help="Recreate virtual environment if it already exists.",
-    ),
-    venv_path: Path = typer.Option(
-        None,
-        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
-    ),
+        project_path: Path = project_path_argument,
+        settings_file: Path = typer.Option(
+            None, help="Path to the settings file. Defaults to PROJECT_DIR/settings.yaml.", show_default=False
+        ),
+        recreate_venv: bool = typer.Option(
+            False,
+            help="Recreate virtual environment if it already exists.",
+        ),
+        venv_path: Path = typer.Option(
+            None,
+            help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
+        ),
 ):
     """
     Build an Airflow project. This command sets up the project environment, installs Apache Airflow
@@ -114,18 +114,18 @@ def build(
 
 @app.command()
 def start(
-    project_path: Path = project_path_argument,
-    background: bool = typer.Option(
-        False,
-        help="Run Airflow in the background.",
-    ),
+        project_path: Path = project_path_argument,
+        background: bool = typer.Option(
+            False,
+            help="Run Airflow in the background.",
+        ),
 ):
     """Start Airflow."""
-    airflowctl_project_check(project_path)
-    global_config = get_global_config(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
     venv_path = get_conf_or_raise("venv_path", global_config)
 
     mode = VirtualenvMode(project_path, venv_path=venv_path)
+
     if not mode.has_built():
         # Build the project if it has not been built yet
         print("Project has not been built yet.")
@@ -139,8 +139,7 @@ def start(
 @app.command()
 def stop(project_path: Path = project_path_argument):
     """Stop a running background Airflow process and its entire process tree."""
-    airflowctl_project_check(project_path)
-    global_config = get_global_config(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
     venv_path = get_conf_or_raise("venv_path", global_config)
     mode = VirtualenvMode(project_path, venv_path=venv_path)
     mode.stop()
@@ -148,15 +147,14 @@ def stop(project_path: Path = project_path_argument):
 
 @app.command()
 def logs(
-    project_path: Path = project_path_argument,
-    webserver: bool = typer.Option(False, "-w", help="Filter logs for the Webserver"),
-    scheduler: bool = typer.Option(False, "-s", help="Filter logs for the Scheduler"),
-    triggerer: bool = typer.Option(False, "-t", help="Filter logs for the Triggerer"),
+        project_path: Path = project_path_argument,
+        webserver: bool = typer.Option(False, "-w", help="Filter logs for the Webserver"),
+        scheduler: bool = typer.Option(False, "-s", help="Filter logs for the Scheduler"),
+        triggerer: bool = typer.Option(False, "-t", help="Filter logs for the Triggerer"),
 ):
     """Continuously display live logs of the background Airflow processes."""
 
-    airflowctl_project_check(project_path)
-    global_config = get_global_config(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
     venv_path = get_conf_or_raise("venv_path", global_config)
     mode = VirtualenvMode(project_path=project_path, venv_path=venv_path)
     mode.logs(webserver=webserver, scheduler=scheduler, triggerer=triggerer)
@@ -222,8 +220,7 @@ def list_cmd():
 def info(project_path: Path = project_path_argument):
     """Display information about the current Airflow project."""
 
-    airflowctl_project_check(project_path)
-    global_config = get_global_config(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
     venv_path = get_conf_or_raise("venv_path", global_config)
 
     project_path = Path(project_path)
@@ -243,18 +240,17 @@ def info(project_path: Path = project_path_argument):
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def airflow(
-    ctx: typer.Context,
-    project_path: Path = typer.Option(
-        Path.cwd(),
-        help="Absolute path to the Airflow project directory.",
-        exists=True,
-        file_okay=False,
-        resolve_path=True,
-    ),
+        ctx: typer.Context,
+        project_path: Path = typer.Option(
+            Path.cwd(),
+            help="Absolute path to the Airflow project directory.",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
 ):
     """Forward commands to Airflow CLI."""
-    airflowctl_project_check(project_path)
-    global_config = get_global_config(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
     venv_path = get_conf_or_raise("venv_path", global_config)
 
     command = " ".join(ctx.args)
