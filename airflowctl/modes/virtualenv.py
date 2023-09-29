@@ -32,9 +32,7 @@ class VirtualenvMode:
         airflow_version: str | None = None,
         venv_path: str | Path | None = None,
     ):
-        typer.echo(f"{project_path=}, {python_version=}, {airflow_version=}, {venv_path=}")
         self.project_path = convert_str_or_path_to_absolute_path(project_path)
-        typer.echo(f"{self.project_path=}")
 
         self.airflow_version = airflow_version
         self.python_version = python_version
@@ -43,7 +41,6 @@ class VirtualenvMode:
             self.venv_path = self.project_path / ".venv"
         else:
             self.venv_path = convert_str_or_path_to_absolute_path(venv_path)
-        typer.echo(f"{self.venv_path=}")
         self.env_file: Path = self.project_path / ".env"
 
         self.background_process_ids_file: Path = self.project_path / ".airflowctl" / ".background_process_ids"
