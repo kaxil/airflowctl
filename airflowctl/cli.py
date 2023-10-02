@@ -17,6 +17,7 @@ from airflowctl.utils.project import (
     create_project,
     get_conf_or_raise,
     get_settings_file_path_or_raise,
+    validate_and_get_airflowctl_global_config,
 )
 
 app = typer.Typer()
@@ -59,13 +60,17 @@ def init(
         default=False,
         help="Run Airflow in the background.",
     ),
+    venv_path: Path = typer.Option(
+        None,
+        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
+    ),
 ):
     """
     Initialize a new Airflow project.
     """
     project_dir, settings_file = create_project(project_name, project_path, airflow_version, python_version)
     if build_start:
-        build(project_path=project_dir, settings_file=settings_file, recreate_venv=False)
+        build(project_path=project_dir, settings_file=settings_file, recreate_venv=False, venv_path=venv_path)
         start(project_path=project_dir, background=background)
 
 
@@ -78,6 +83,10 @@ def build(
     recreate_venv: bool = typer.Option(
         False,
         help="Recreate virtual environment if it already exists.",
+    ),
+    venv_path: Path = typer.Option(
+        None,
+        help="Path to the venv directory. Defaults to PROJECT_DIR/.venv/",
     ),
 ):
     """
@@ -96,7 +105,7 @@ def build(
     airflow_version = get_conf_or_raise("airflow_version", config)
     python_version = get_conf_or_raise("python_version", config)
 
-    mode = VirtualenvMode(project_path, python_version, airflow_version)
+    mode = VirtualenvMode(project_path, python_version, airflow_version, venv_path)
     venv_path = mode.build(recreate_venv=recreate_venv)
 
     typer.echo("Airflow project built successfully.")
@@ -112,9 +121,11 @@ def start(
     ),
 ):
     """Start Airflow."""
-    airflowctl_project_check(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
-    mode = VirtualenvMode(project_path)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
+
     if not mode.has_built():
         # Build the project if it has not been built yet
         print("Project has not been built yet.")
@@ -128,8 +139,9 @@ def start(
 @app.command()
 def stop(project_path: Path = project_path_argument):
     """Stop a running background Airflow process and its entire process tree."""
-    airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
+    venv_path = get_conf_or_raise("venv_path", global_config)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
     mode.stop()
 
 
@@ -142,8 +154,9 @@ def logs(
 ):
     """Continuously display live logs of the background Airflow processes."""
 
-    airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path=project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
+    venv_path = get_conf_or_raise("venv_path", global_config)
+    mode = VirtualenvMode(project_path=project_path, venv_path=venv_path)
     mode.logs(webserver=webserver, scheduler=scheduler, triggerer=triggerer)
 
 
@@ -207,7 +220,8 @@ def list_cmd():
 def info(project_path: Path = project_path_argument):
     """Display information about the current Airflow project."""
 
-    airflowctl_project_check(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
     project_path = Path(project_path)
     project_conf_path = Path(project_path) / ".airflowctl" / "config.yaml"
@@ -220,7 +234,7 @@ def info(project_path: Path = project_path_argument):
     console.print(f"Project Name: {project_name}")
     console.print(f"Project Path: {project_path.absolute()}")
 
-    mode = VirtualenvMode(project_path=project_path)
+    mode = VirtualenvMode(project_path=project_path, venv_path=venv_path)
     mode.print_info(project_config=project_config, console=console)
 
 
@@ -236,11 +250,12 @@ def airflow(
     ),
 ):
     """Forward commands to Airflow CLI."""
-    airflowctl_project_check(project_path)
+    global_config = validate_and_get_airflowctl_global_config(project_path)
+    venv_path = get_conf_or_raise("venv_path", global_config)
 
     command = " ".join(ctx.args)
 
-    mode = VirtualenvMode(project_path)
+    mode = VirtualenvMode(project_path, venv_path=venv_path)
     mode.run_airflow_command(command)
 
 

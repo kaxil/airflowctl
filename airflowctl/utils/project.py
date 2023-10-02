@@ -189,6 +189,7 @@ def airflowctl_project_check(project_path: str | Path):
 SETTINGS_FILENAME = "settings.yaml"
 ASTRO_SETTINGS_FILENAME = "airflow_settings.yaml"
 GLOBAL_CONFIG_DIR = Path.home() / ".airflowctl"
+GLOBAL_CONFIG_FILE = GLOBAL_CONFIG_DIR / "config.yaml"
 GLOBAL_TRACKING_FILE = GLOBAL_CONFIG_DIR / "tracked_projects.yaml"
 
 
@@ -282,3 +283,24 @@ def get_settings_file_path_or_raise(
         typer.echo(f"Settings file '{settings_file}' not found.")
         raise typer.Exit(1)
     return settings_file
+
+
+def get_global_config(project_path: str | Path | None = None) -> dict:
+    if not project_path:
+        global_config_path = GLOBAL_CONFIG_FILE
+    else:
+        global_config_path = project_path / ".airflowctl" / "config.yaml"
+
+    if not global_config_path.exists():
+        typer.echo(f"Global config file '{global_config_path}' not found.")
+        raise typer.Exit(1)
+
+    with open(global_config_path) as f:
+        config = yaml.safe_load(f)
+    return config
+
+
+def validate_and_get_airflowctl_global_config(project_path: str | Path) -> dict:
+    airflowctl_project_check(project_path)
+    global_config = get_global_config(project_path)
+    return global_config

@@ -150,6 +150,9 @@ The CLI relies on [`pyenv`](https://github.com/pyenv/pyenv) to download and inst
 Example, if you have Python 3.8 installed but you specify Python 3.7 in the `settings.yaml` file,
 the CLI will install Python 3.7 using `pyenv` and create a virtual environment with Python 3.7 first.
 
+Optionally, you can choose custom virtual environment path in case you have already installed apache-airflow package and other dependencies.
+Pass the existing virtualenv path using `--venv_path` option. Make sure the existing virtualenv has same airflow and python version as your `settings.yaml` file states.
+
 ### Step 3: Start Airflow
 
 To start Airflow services, use the start command.

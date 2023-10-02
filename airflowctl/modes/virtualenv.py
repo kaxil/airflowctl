@@ -19,6 +19,7 @@ from rich.console import Console
 
 from airflowctl.utils.connections import add_connections
 from airflowctl.utils.install_airflow import install_airflow
+from airflowctl.utils.paths import convert_str_or_path_to_absolute_path
 from airflowctl.utils.project import INSTALLED_PYTHON_VERSION, get_settings_file_path_or_raise
 from airflowctl.utils.variables import add_variables
 
@@ -29,14 +30,17 @@ class VirtualenvMode:
         project_path: Path,  # TODO: Make this current working directory by default
         python_version: str | None = None,
         airflow_version: str | None = None,
+        venv_path: str | Path | None = None,
     ):
-        self.project_path = project_path if isinstance(project_path, Path) else Path(project_path)
-        self.project_path = self.project_path.absolute()
+        self.project_path = convert_str_or_path_to_absolute_path(project_path)
 
         self.airflow_version = airflow_version
         self.python_version = python_version
         # TODO: Make this just a Path object
-        self.venv_path: Path = self.project_path / ".venv"
+        if not venv_path:
+            self.venv_path = self.project_path / ".venv"
+        else:
+            self.venv_path = convert_str_or_path_to_absolute_path(venv_path)
         self.env_file: Path = self.project_path / ".env"
 
         self.background_process_ids_file: Path = self.project_path / ".airflowctl" / ".background_process_ids"
@@ -56,6 +60,9 @@ class VirtualenvMode:
             with settings_file.open() as f:
                 settings = yaml.safe_load(f)
             self.python_version = settings.get("python_version", INSTALLED_PYTHON_VERSION)
+
+        # TODO: check if provided venv path needs to proceed the following operations. If true, skip those
+        #  i.e., existing venv has already met the requirements.
 
         # Create virtual environment
         venv_path = verify_or_create_venv(
