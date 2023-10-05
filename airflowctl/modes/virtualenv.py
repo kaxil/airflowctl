@@ -30,7 +30,7 @@ class VirtualenvMode:
         project_path: Path,  # TODO: Make this current working directory by default
         python_version: str | None = None,
         airflow_version: str | None = None,
-        venv_path: str | Path | None = None,
+        venv_path: str | None = None,
     ):
         self.project_path = convert_str_or_path_to_absolute_path(project_path)
 
@@ -38,9 +38,13 @@ class VirtualenvMode:
         self.python_version = python_version
         # TODO: Make this just a Path object
         if not venv_path:
-            self.venv_path = self.project_path / ".venv"
-        else:
-            self.venv_path = convert_str_or_path_to_absolute_path(venv_path)
+            settings_file = get_settings_file_path_or_raise(self.project_path, raise_if_not_found=False)
+            if settings_file.exists():
+                with settings_file.open() as f:
+                    settings = yaml.safe_load(f)
+                venv_path = settings.get("mode", {}).get("virtualenv", {}).get("venv_path")
+
+        self.venv_path: Path = convert_str_or_path_to_absolute_path(venv_path) or self.project_path / ".venv"
         self.env_file: Path = self.project_path / ".env"
 
         self.background_process_ids_file: Path = self.project_path / ".airflowctl" / ".background_process_ids"
@@ -60,9 +64,6 @@ class VirtualenvMode:
             with settings_file.open() as f:
                 settings = yaml.safe_load(f)
             self.python_version = settings.get("python_version", INSTALLED_PYTHON_VERSION)
-
-        # TODO: check if provided venv path needs to proceed the following operations. If true, skip those
-        #  i.e., existing venv has already met the requirements.
 
         # Create virtual environment
         venv_path = verify_or_create_venv(
