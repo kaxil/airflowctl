@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airflowctl"
-version = "0.2.8"
+version = "0.2.9"
 description = "A CLI tool to streamline getting started with Apache Airflow™ and managing multiple Airflow projects."
 authors = [
     "Kaxil Naik <kaxilnaik@gmail.com>",
