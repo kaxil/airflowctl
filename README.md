@@ -110,6 +110,12 @@ airflow_version: "2.6.3"
 # Python version for the project
 python_version: "3.8"
 
+
+# Path to a virtual environment to be used for the project
+mode:
+  virtualenv:
+    venv_path: "PROJECT_DIR/.venv"
+
 # Airflow connections
 connections:
     # Example connection
@@ -150,8 +156,10 @@ The CLI relies on [`pyenv`](https://github.com/pyenv/pyenv) to download and inst
 Example, if you have Python 3.8 installed but you specify Python 3.7 in the `settings.yaml` file,
 the CLI will install Python 3.7 using `pyenv` and create a virtual environment with Python 3.7 first.
 
-Optionally, you can choose custom virtual environment path in case you have already installed apache-airflow package and other dependencies.
-Pass the existing virtualenv path using `--venv_path` option. Make sure the existing virtualenv has same airflow and python version as your `settings.yaml` file states.
+Optionally, you can choose custom virtual environment path in case you have already installed apache-airflow package
+and other dependencies.
+Pass the existing virtualenv path using `--venv_path` option to the `init` command or in `settings.yaml` file.
+Make sure the existing virtualenv has same airflow and python version as your `settings.yaml` file states.
 
 ### Step 3: Start Airflow
 
