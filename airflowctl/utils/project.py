@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -42,11 +43,12 @@ def create_project(
     GLOBAL_CONFIG_DIR.mkdir(exist_ok=True)
     GLOBAL_TRACKING_FILE.touch(exist_ok=True)
 
-    available_airflow_vers = get_airflow_versions()
-    if airflow_version not in available_airflow_vers and not Path(airflow_version).exists():
-        print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
-        print(f"Please select a valid version from the list below: {available_airflow_vers}")
-        raise typer.Exit(code=1)
+    if not os.getenv("AIRFLOWCTL_SKIP_VERSION_CHECK"):
+        available_airflow_vers = get_airflow_versions()
+        if airflow_version not in available_airflow_vers and not Path(airflow_version).exists():
+            print(f"Apache Airflow version [bold red]{airflow_version}[/bold red] not found.")
+            print(f"Please select a valid version from the list below: {available_airflow_vers}")
+            raise typer.Exit(code=1)
 
     # Create the project directory
     project_dir = Path(project_path).absolute()
