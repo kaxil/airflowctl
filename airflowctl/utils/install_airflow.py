@@ -104,7 +104,7 @@ def install_airflow(
             f"constraints-{version}/constraints-{_get_major_minor_version(python_version)}.txt"
         )
 
-    if constraints_url:
+    if constraints_url and not os.getenv("AIRFLOWCTL_SKIP_CONSTRAINTS"):
         install_command += f" --constraint {constraints_url} "
 
     try:
