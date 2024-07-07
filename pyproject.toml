@@ -40,7 +40,9 @@ airflowctl = "airflowctl.cli:app"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
-apache-airflow = "^2.6.3"
+apache-airflow  = [
+    { version = "^2.9.2", python = ">=3.8,<3.13" }
+]
 
 [build-system]
 requires = ["poetry-core"]
