@@ -65,7 +65,7 @@ def install_airflow(
     python_version: str,
     project_path: Path,
     extras: str = "",
-    requirements: str = "",
+    requirements: bool = True,
     verbose: bool = False,
 ):
     if is_airflow_installed(venv_path, version, project_path=project_path):
@@ -86,7 +86,7 @@ def install_airflow(
     install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install "
 
     if requirements:
-        install_command += f" -r {requirements}"
+        install_command += f" -r {os.path.join(project_path, 'requirements.txt')}"
 
     extra_pip_flags = os.getenv("AIRFLOWCTL_PIP_FLAGS")
     if extra_pip_flags:
