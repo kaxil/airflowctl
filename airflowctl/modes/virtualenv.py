@@ -42,7 +42,7 @@ class VirtualenvMode:
             if settings_file.exists():
                 with settings_file.open() as f:
                     settings = yaml.safe_load(f)
-                venv_path = settings.get("mode", {}).get("virtualenv", {}).get("venv_path")
+                venv_path = settings.get("mode", {}).get("config", {}).get("venv_path")
 
         self.venv_path: Path = convert_str_or_path_to_absolute_path(venv_path) or self.project_path / ".venv"
         self.env_file: Path = self.project_path / ".env"
@@ -66,7 +66,7 @@ class VirtualenvMode:
             self.python_version = settings.get("python_version", INSTALLED_PYTHON_VERSION)
 
         # Create virtual environment
-        venv_path = verify_or_create_venv(
+        venv_path = self.verify_or_create_venv(
             venv_path=venv_path,
             recreate=recreate_venv,
             python_version=self.python_version,
@@ -347,13 +347,64 @@ class VirtualenvMode:
                 except subprocess.CalledProcessError:
                     pass
 
-        if (
-            self.airflow_version
-            and is_valid_pep440_version(self.airflow_version)
-            and version.parse(self.airflow_version) >= version.parse("2.6.0")
-        ):
-            os.environ["AIRFLOW__CORE__EXECUTOR"] = "LocalExecutor"
-            os.environ["_AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK"] = "1"
+    @classmethod
+    def verify_or_create_venv(cls, venv_path: str | Path, recreate: bool, python_version: str):
+        if isinstance(venv_path, str):
+            venv_path = Path(venv_path).absolute()
+
+        if recreate and os.path.exists(venv_path):
+            print(f"Recreating virtual environment at [bold blue]{venv_path}[/bold blue]")
+            shutil.rmtree(venv_path)
+
+        venv_bin_python = os.path.join(venv_path, "bin", "python")
+        if os.path.exists(venv_path) and not os.path.exists(venv_bin_python):
+            print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
+            raise SystemExit()
+
+        if python_version != INSTALLED_PYTHON_VERSION:
+            print(
+                f"Python version ({python_version}) is different from the default Python version ({sys.version})."
+            )
+            cls.create_virtualenv_with_specific_python_version(venv_path, python_version)
+
+        if not os.path.exists(venv_path):
+            venv.create(venv_path, with_pip=True)
+            print(f"Virtual environment created at [bold blue]{venv_path}[/bold blue]")
+
+        return venv_path
+
+    @classmethod
+    def create_virtualenv_with_specific_python_version(cls, venv_path: Path, python_version: str):
+        if isinstance(venv_path, str):
+            venv_path = Path(venv_path)
+        venv_path = str(venv_path.absolute())
+
+        # Check if pyenv is available
+        if shutil.which("pyenv"):
+            # Use pyenv to install and set the desired Python version
+            print("pyenv found. Using pyenv to install and set the desired Python version.")
+            subprocess.run(["pyenv", "install", python_version, "--skip-existing"], check=True)
+        else:
+            print("Install pyenv to use a specific Python version.")
+            raise typer.Exit(code=1)
+
+        result = subprocess.run(
+            ["pyenv", "prefix", python_version], stdout=subprocess.PIPE, text=True, check=True
+        )
+        python_ver_path = result.stdout.strip()
+
+        py_venv_bin_python = os.path.join(python_ver_path, "bin", "python")
+
+        # Create the virtual environment using venv
+        subprocess.run([py_venv_bin_python, "-m", "venv", venv_path, "--clear"], check=True)
+
+        venv_bin_python = os.path.join(venv_path, "bin", "python")
+
+        # Continue with using the virtual environment
+        subprocess.run([venv_bin_python, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+        print(
+            f"Virtual environment created at [bold blue]{venv_path}[/bold blue] with Python version {python_version}"
+        )
 
 
 def is_valid_pep440_version(version_str: str) -> bool:
@@ -362,65 +413,6 @@ def is_valid_pep440_version(version_str: str) -> bool:
         return True
     except version.InvalidVersion:
         return False
-
-
-def create_virtualenv_with_specific_python_version(venv_path: Path, python_version: str):
-    if isinstance(venv_path, str):
-        venv_path = Path(venv_path)
-    venv_path = str(venv_path.absolute())
-
-    # Check if pyenv is available
-    if shutil.which("pyenv"):
-        # Use pyenv to install and set the desired Python version
-        print("pyenv found. Using pyenv to install and set the desired Python version.")
-        subprocess.run(["pyenv", "install", python_version, "--skip-existing"], check=True)
-    else:
-        print("Install pyenv to use a specific Python version.")
-        raise typer.Exit(code=1)
-
-    result = subprocess.run(
-        ["pyenv", "prefix", python_version], stdout=subprocess.PIPE, text=True, check=True
-    )
-    python_ver_path = result.stdout.strip()
-
-    py_venv_bin_python = os.path.join(python_ver_path, "bin", "python")
-
-    # Create the virtual environment using venv
-    subprocess.run([py_venv_bin_python, "-m", "venv", venv_path, "--clear"], check=True)
-
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-
-    # Continue with using the virtual environment
-    subprocess.run([venv_bin_python, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    print(
-        f"Virtual environment created at [bold blue]{venv_path}[/bold blue] with Python version {python_version}"
-    )
-
-
-def verify_or_create_venv(venv_path: str | Path, recreate: bool, python_version: str):
-    if isinstance(venv_path, str):
-        venv_path = Path(venv_path).absolute()
-
-    if recreate and os.path.exists(venv_path):
-        print(f"Recreating virtual environment at [bold blue]{venv_path}[/bold blue]")
-        shutil.rmtree(venv_path)
-
-    venv_bin_python = os.path.join(venv_path, "bin", "python")
-    if os.path.exists(venv_path) and not os.path.exists(venv_bin_python):
-        print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
-        raise SystemExit()
-
-    if python_version != INSTALLED_PYTHON_VERSION:
-        print(
-            f"Python version ({python_version}) is different from the default Python version ({sys.version})."
-        )
-        create_virtualenv_with_specific_python_version(venv_path, python_version)
-
-    if not os.path.exists(venv_path):
-        venv.create(venv_path, with_pip=True)
-        print(f"Virtual environment created at [bold blue]{venv_path}[/bold blue]")
-
-    return venv_path
 
 
 def activate_virtualenv_cmd(venv_path: Path | str) -> str:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airflowctl"
-version = "0.2.10"
+version = "0.2.11"
 description = "A CLI tool to streamline getting started with Apache Airflow™ and managing multiple Airflow projects."
 authors = [
     "Kaxil Naik <kaxilnaik@gmail.com>",
@@ -15,17 +15,17 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 license = "Apache-2.0"
 repository = "https://github.com/kaxil/airflowctl"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 typer = {extras = ["all"], version = "^0.9.0"}
 httpx = "^0.24.1"
 rich-argparse = "^1.2.0"
@@ -34,6 +34,7 @@ pyyaml = "^6.0.1"
 python-dotenv = ">=0.21.0"
 psutil = "^5.9.5"
 packaging = "^23.1"
+uv = ">=0.4"
 
 [tool.poetry.scripts]
 airflowctl = "airflowctl.cli:app"
@@ -50,10 +51,13 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 110
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311', 'py312']
 
 [tool.ruff]
 line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
 # Enable Pyflakes `E` and `F` codes by default.
 extend-select = [
     "W",    # pycodestyle warnings
@@ -69,8 +73,8 @@ extend-select = [
 # Remove this in future
 extend-ignore = ["A002", "C901", "E402", "E501", "ISC001", "ISC003", "UP030"]
 
-target-version = "py310"
-fix = true
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
 
 
 [tool.ruff.mccabe]

@@ -1,0 +1,12 @@
+.git
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+webserver_config.py
+logs
+standalone_admin_password.txt
+.DS_Store
+__pycache__/
+.env
+.venv
+.airflowctl

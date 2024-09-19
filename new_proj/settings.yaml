@@ -1,0 +1,31 @@
+# Airflow version to be installed
+airflow_version: "2.10.1"
+
+# Python version for the project
+python_version: "3.10.4"
+
+# Path to a virtual env
+mode:
+  name: "uv"
+  config:
+    venv_path: "/Users/kaxilnaik/Documents/GitHub/kaxil/airflowctl/new_proj/.venv"
+
+# Airflow connections
+connections:
+    # Example connection
+    # - conn_id: example
+    #   conn_type: http
+    #   host: http://example.com
+    #   port: 80
+    #   login: user
+    #   password: pass
+    #   schema: http
+    #   extra:
+    #      example_extra_field: example-value
+
+# Airflow variables
+variables:
+    # Example variable
+    # - key: example
+    #   value: example-value
+    #   description: example-description

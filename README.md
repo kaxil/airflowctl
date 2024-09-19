@@ -113,8 +113,9 @@ python_version: "3.8"
 
 # Path to a virtual environment to be used for the project
 mode:
-  virtualenv:
-    venv_path: "PROJECT_DIR/.venv"
+    name: "uv"
+    config:
+      venv_path: "PROJECT_DIR/.venv"
 
 # Airflow connections
 connections:
@@ -151,10 +152,10 @@ cd my_airflow_project
 airflowctl build
 ```
 
-The CLI relies on [`pyenv`](https://github.com/pyenv/pyenv) to download and install a Python version if the version is not already installed.
+The CLI relies on one of [`uv`](https://docs.astral.sh/uv/) or [`pyenv`](https://github.com/pyenv/pyenv) to download and install a Python version if the version is not already installed.
 
 Example, if you have Python 3.8 installed but you specify Python 3.7 in the `settings.yaml` file,
-the CLI will install Python 3.7 using `pyenv` and create a virtual environment with Python 3.7 first.
+the CLI will install Python 3.7 using `uv` or `pyenv` and create a virtual environment with Python 3.7 first.
 
 Optionally, you can choose custom virtual environment path in case you have already installed apache-airflow package
 and other dependencies.
@@ -365,9 +366,6 @@ adding the following environment variable to the `.env` file:
 _AIRFLOW__SKIP_DATABASE_EXECUTOR_COMPATIBILITY_CHECK=1
 AIRFLOW__CORE__EXECUTOR=LocalExecutor
 ```
-
-This should automatically happen for you when you run `airflowctl airflow` command if
-Airflow version `==2.6.*`.
 
 > [!WARNING]
 > Sqlite is not recommended for production use. Use it only for development and testing only.
