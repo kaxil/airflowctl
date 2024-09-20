@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -8,6 +9,7 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
+from airflowctl.modes.uv import UvMode
 from airflowctl.modes.virtualenv import VirtualenvMode
 from airflowctl.utils.install_airflow import get_latest_airflow_version
 from airflowctl.utils.project import (
@@ -31,6 +33,11 @@ project_path_argument = typer.Argument(
     file_okay=False,
     resolve_path=True,
 )
+
+mode_mappings = {
+    "uv": UvMode,
+    "virtualenv": VirtualenvMode,
+}
 
 
 @app.command()
@@ -101,13 +108,31 @@ def build(
 
     airflow_version = get_conf_or_raise("airflow_version", config)
     python_version = get_conf_or_raise("python_version", config)
-    venv_path = config.get("venv_path", None)
+    mode_config = config.get("mode", {}).get("config", {})
 
-    mode = VirtualenvMode(project_path, python_version, airflow_version, venv_path)
+    mode_cls = _get_mode(config)
+    mode = mode_cls(project_path, python_version, airflow_version, **mode_config)
     venv_path = mode.build(recreate_venv=recreate_venv)
 
     typer.echo("Airflow project built successfully.")
     return venv_path
+
+
+def _get_mode(config: None | dict = None) -> type[VirtualenvMode] | type[UvMode]:
+    """
+    Get the mode class based on the environment variable. If Env var is not set, uses one from settings file.
+    If not found, defaults to UvMode.
+    """
+    # Check for environment variable first
+    mode_conf = os.getenv("AIRFLOWCTL_MODE") or (config or {}).get("mode", {}).get("name")
+
+    # Default to 'uv' if no mode is found
+    if not mode_conf:
+        # typer.echo("Mode not found in settings file or env variable, defaulting to 'uv'.")
+        mode_conf = "uv"
+
+    # Return the appropriate mode class from the mapping
+    return mode_mappings.get(mode_conf)
 
 
 @app.command()
@@ -121,7 +146,8 @@ def start(
     """Start Airflow."""
     airflowctl_project_check(project_path)
 
-    mode = VirtualenvMode(project_path)
+    mode_cls = _get_mode()
+    mode = mode_cls(project_path)
     if not mode.has_built():
         # Build the project if it has not been built yet
         print("Project has not been built yet.")
@@ -136,7 +162,8 @@ def start(
 def stop(project_path: Path = project_path_argument):
     """Stop a running background Airflow process and its entire process tree."""
     airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path)
+    mode_cls = _get_mode()
+    mode = mode_cls(project_path)
     mode.stop()
 
 
@@ -150,7 +177,8 @@ def logs(
     """Continuously display live logs of the background Airflow processes."""
 
     airflowctl_project_check(project_path)
-    mode = VirtualenvMode(project_path=project_path)
+    mode_cls = _get_mode()
+    mode = mode_cls(project_path)
     mode.logs(webserver=webserver, scheduler=scheduler, triggerer=triggerer)
 
 
@@ -227,7 +255,8 @@ def info(project_path: Path = project_path_argument):
     console.print(f"Project Name: {project_name}")
     console.print(f"Project Path: {project_path.absolute()}")
 
-    mode = VirtualenvMode(project_path=project_path)
+    mode_cls = _get_mode()
+    mode = mode_cls(project_path=project_path)
     mode.print_info(project_config=project_config, console=console)
 
 
@@ -247,7 +276,8 @@ def airflow(
 
     command = " ".join(ctx.args)
 
-    mode = VirtualenvMode(project_path)
+    mode_cls = _get_mode()
+    mode = mode_cls(project_path)
     mode.run_airflow_command(command)
 
 

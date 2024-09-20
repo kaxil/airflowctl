@@ -123,9 +123,10 @@ airflow_version: "{airflow_version}"
 # Python version for the project
 python_version: "{python_version}"
 
-# Path to a virtual evn
+# Path to a virtual env
 mode:
-  virtualenv:
+  name: "uv"
+  config:
     venv_path: "{venv_path}"
 
 # Airflow connections
@@ -270,7 +271,7 @@ def get_settings_file_path_or_raise(
                 gitignore_contents += "\nairflow.db"
             if "airflow.cfg" not in gitignore_contents:
                 gitignore_contents += "\nairflow.cfg"
-            if ".venev" not in gitignore_contents:
+            if ".venv" not in gitignore_contents:
                 gitignore_contents += "\n.venv"
             gitignore_file.write_text(gitignore_contents)
 
@@ -281,7 +282,7 @@ def get_settings_file_path_or_raise(
                 dockerignore_contents += "\nairflow.db"
             if "airflow.cfg" not in dockerignore_contents:
                 dockerignore_contents += "\nairflow.cfg"
-            if ".venev" not in dockerignore_contents:
+            if ".venv" not in dockerignore_contents:
                 dockerignore_contents += "\n.venv"
             dockerignore_file.write_text(dockerignore_contents)
 

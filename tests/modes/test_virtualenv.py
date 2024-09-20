@@ -6,8 +6,8 @@ import pytest
 import typer
 
 from airflowctl.modes.virtualenv import (
+    VirtualenvMode,
     activate_virtualenv_cmd,
-    create_virtualenv_with_specific_python_version,
     source_env_file,
 )
 
@@ -71,7 +71,7 @@ def test_create_virtualenv_with_specific_python_version_pyenv_available():
             ),
         ]
 
-        create_virtualenv_with_specific_python_version(venv_path, python_version)
+        VirtualenvMode.create_virtualenv_with_specific_python_version(venv_path, python_version)
 
     expected_calls = [
         mock.call(["pyenv", "install", python_version, "--skip-existing"], check=True),
@@ -91,4 +91,4 @@ def test_create_virtualenv_with_specific_python_version_pyenv_not_available():
 
     with mock.patch("shutil.which", return_value=None):
         with pytest.raises(typer.Exit):
-            create_virtualenv_with_specific_python_version(venv_path, python_version)
+            VirtualenvMode.create_virtualenv_with_specific_python_version(venv_path, python_version)

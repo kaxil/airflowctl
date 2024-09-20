@@ -66,6 +66,7 @@ def install_airflow(
     project_path: Path,
     extras: str = "",
     requirements: bool = True,
+    pip_provider: str = "pip",
     verbose: bool = False,
 ):
     if is_airflow_installed(venv_path, version, project_path=project_path):
@@ -79,11 +80,11 @@ def install_airflow(
         print(f"[bold red]Virtual environment at {venv_path} does not exist or is not valid.[/bold red]")
         raise SystemExit()
 
-    upgrade_pipeline_command = f"{venv_bin_python} -m pip install --upgrade pip setuptools wheel"
+    upgrade_pipeline_command = f"{venv_bin_python} -m {pip_provider} install --upgrade pip setuptools wheel"
 
     constraints_url = os.getenv("AIRFLOWCTL_CONSTRAINTS")
 
-    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m pip install "
+    install_command = f"{upgrade_pipeline_command} && {venv_bin_python} -m {pip_provider} install "
 
     if requirements:
         install_command += f" -r {os.path.join(project_path, 'requirements.txt')}"
