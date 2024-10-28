@@ -1,7 +1,7 @@
 ---
 ci:
   skip: [markdown-link-check]
-default_stages: [commit, push]
+default_stages: [pre-commit, pre-push]
 minimum_pre_commit_version: "1.20.0"
 repos:
   - repo: meta
@@ -10,7 +10,7 @@ repos:
       - id: check-hooks-apply
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-merge-conflict
       - id: check-toml
@@ -34,13 +34,13 @@ repos:
       - id: forbid-tabs
       - id: remove-tabs
   - repo: https://github.com/psf/black
-    rev: 24.8.0
+    rev: 24.10.0
     hooks:
       - id: black
         args: ["--config", "./pyproject.toml"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.6.5'
+    rev: 'v0.7.1'
     hooks:
       - id: ruff
 
