@@ -1,3 +1,13 @@
+> [!WARNING]  
+> **⚠️ ARCHIVED**: The `airflowctl` PyPI package name has been moved to the Apache Airflow repo and is now maintained by the Airflow PMC. 
+> This repository is archived and no longer maintained. 
+> One of the goals was to make this project similar to what `kubectl` is for Kubernetes. 
+> This will now be possible with `airflowctl` and Airflow 3, thanks to [AIP-81](https://cwiki.apache.org/confluence/display/AIRFLOW/AIP-81+Enhanced+Security+in+CLI+via+Integration+of+API).
+> and thanks to the advancements in `uv`, you can now easily run Airflow with a single command. Further development will continue to happen in `airflow` cli or `astro` CLI:
+> ```bash
+> uvx --from "apache-airflow" airflow standalone
+> ```
+
 # airflowctl
 
 [![PyPI](https://img.shields.io/pypi/v/airflowctl)](https://pypi.org/project/airflowctl/)
